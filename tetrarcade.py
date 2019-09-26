@@ -20,6 +20,11 @@ WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
+# Text
+TEXT_COLOR = arcade.color.BUBBLES
+FONT_NAME = "joystix monospace.ttf"
+TEXT_MARGIN = 20
+
 # Sprites paths
 WINDOW_BG = "images/bg.jpg"
 MATRIX_SPRITE_PATH = "images/matrix.png"
@@ -32,6 +37,8 @@ MINOES_SPRITES_PATHS = {
     "red":     "images/red_mino.png",
     "magenta": "images/magenta_mino.png"
 }
+
+# Mino transparency
 NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 127
 GHOST_ALPHA = 50
@@ -335,10 +342,16 @@ class GameLogic():
             self.ghost_piece.minoes_positions
         ):
             self.ghost_piece.position += Movement.DOWN
+            
+    def add_to_score(self, ds):
+        self.score += ds
+        if self.score > self.high_score:
+            self.high_score = self.score
+        self.ui.update_score()
         
     def soft_drop(self):
         if self.move(Movement.DOWN):
-            self.score += 1
+            self.add_to_score(1)
             return True
         else:
             return False
@@ -347,7 +360,7 @@ class GameLogic():
         drop_score = 0
         while self.move(Movement.DOWN, prelock_on_stuck=False):
             drop_score += 2
-        self.score += drop_score
+        self.add_to_score(drop_score)
         return drop_score
         
     def lock(self):
@@ -408,22 +421,24 @@ class GameLogic():
         else:
             self.combo = -1
             
+        lock_score = 0
+            
         if nb_lines_cleared or t_spin:
             self.nb_lines += nb_lines_cleared
             ds = self.SCORES[nb_lines_cleared][t_spin]
             self.goal -= ds
             ds *= 100 * self.level
-            self.score += ds
+            lock_score += ds
             self.ui.display(str(ds))
             
         if self.combo >= 1:
             self.ui.display("COMBO x%d" % self.combo)
             ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level
-            self.score += ds
+            lock_score += ds
             self.ui.display(str(ds))
             
-        if self.score > self.high_score:
-            self.high_score = self.score
+        self.add_to_score(lock_score)
+        
         if self.goal <= 0:
             self.new_level()
             
@@ -495,7 +510,8 @@ class UI(arcade.Window):
             width = WINDOW_WIDTH,
             height = WINDOW_HEIGHT,
             title = WINDOW_TITLE,
-            resizable = False
+            resizable = False,
+            antialiasing = False
         )
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
         self.matrix_minoes_sprites = arcade.SpriteList()
@@ -527,6 +543,8 @@ class UI(arcade.Window):
         self.pressed_actions = []
         self.auto_repeat = False
         self.game.new_game()
+        self.update_text()
+        arcade.schedule(self.clock, 1)
     
     def display_new_level(self, level):
         print("Level", level)
@@ -674,28 +692,65 @@ class UI(arcade.Window):
             self.current_piece_sprites.draw()
             self.ghost_piece_sprites.draw()
             self.next_pieces_sprites.draw()
-        self.draw_text()
+        arcade.render_text(
+            self.text,
+            self.matrix_sprite.left - TEXT_MARGIN,
+            self.matrix_sprite.bottom
+        )
+        
+    def clock(self, delta_time=0):
+        self.game.time += 1
+        self.update_text()
             
-    def draw_text(self):
-        t = time.localtime(time.time() - self.time)
+    def update_text(self):
+        t = time.localtime(self.game.time)
         text = """
-CONTROLS:
-move left:\t\t←
-move right:\t\t→
-soft drop:\t\t↓
-hard drop:\t\tspace
-rotate clockwise:\t↑
-rotate counter:\tZ
-hold:\t\t\tC
-pause:\tescape
+score
+{:>16n}
+high score
+{:>16n}
+time
+        {:02d}:{:02d}:{:02d}
+level
+{:>16n}
+lines
+{:>16n}
+goal
+{:>16n}
 
-STATS:
-score:\t\t{:n}
-high score:\t{:n}""".format(self.game.score, self.game.high_score)
-        text += """
-time:\t\t\t%02d:%02d:%02d
-level:\t\t%d""" % (t.tm_hour-1, t.tm_min, t.tm_sec, self.game.level)
-        arcade.draw_text(text, self.matrix_sprite.left, self.matrix_sprite.top, arcade.color.WHITE, 18)
+move left
+               ←
+move right
+               →
+soft drop
+               ↓
+hard drop
+           space
+rotate clockwise
+               ↑
+rotate
+counterclockwise
+               Z
+hold
+               C
+pause
+          escape""".format(
+            self.game.score,
+            self.game.high_score,
+            t.tm_hour-1, t.tm_min, t.tm_sec,
+            self.game.level,
+            self.game.nb_lines,
+            self.game.goal
+        )
+        self.text = arcade.create_text(
+            text = text,
+            color = TEXT_COLOR,
+            font_size = 8,
+            font_name = FONT_NAME,
+            anchor_x = 'right'
+        )
+        
+    update_score = update_text
         
     def update_matrix(self):
         if self.game.matrix:
@@ -741,10 +796,6 @@ level:\t\t%d""" % (t.tm_hour-1, t.tm_min, t.tm_sec, self.game.level)
             self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
             for mino_sprite in self.ghost_piece_sprites:
                 mino_sprite.alpha = GHOST_ALPHA
-
-    def update(self, delta_time):
-        if self.game.status == Status.PLAYING:
-            self.game.time += delta_time
             
     def game_over(self):
         arcade.unschedule(self.repeat_action)
