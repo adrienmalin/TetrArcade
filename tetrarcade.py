@@ -240,7 +240,7 @@ class GameLogic():
             self.fall_delay = pow(0.8 - ((self.level-1)*0.007), self.level-1)
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
-        self.ui.new_level()
+        self.ui.display_new_level(self.level)
         
     def new_current_piece(self):
         self.current_piece = self.next_piece
@@ -504,8 +504,8 @@ class UI(arcade.Window):
         self.auto_repeat = False
         self.game.new_game()
     
-    def new_level(self):
-        print("Level", self.game.level)
+    def display_new_level(self, level):
+        print("Level", level)
         
     def new_piece(self, piece):
         piece_sprites = arcade.SpriteList()
