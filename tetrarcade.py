@@ -10,11 +10,13 @@ python -m pip install --user arcade
 """
 )
 import random
+import locale
+import time
 
 
 # Constants
 # Window
-WINDOW_WIDTH = 800
+WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
@@ -216,12 +218,18 @@ class GameLogic():
         self.ui = ui
         self.high_score = 0
         self.status = Status.STARTING
+        self.matrix = []
+        self.next_pieces = []
+        self.current_piece = None
+        self.held_piece = None
+        self.time = 0
         
     def new_game(self):
         self.level = 0
         self.score = 0
         self.nb_lines = 0
         self.goal = 0
+        self.time = 0
         
         self.lock_delay = LOCK_DELAY
         self.fall_delay = FALL_DELAY
@@ -448,21 +456,8 @@ class GameLogic():
 class UI(arcade.Window):
     
     def __init__(self):
-        super().__init__(
-            width = WINDOW_WIDTH,
-            height = WINDOW_HEIGHT,
-            title = WINDOW_TITLE,
-            resizable = False
-        )
-        self.bg_sprite = arcade.Sprite(WINDOW_BG)
-        self.matrix_minoes_sprites = arcade.SpriteList()
-        self.held_piece_sprites = arcade.SpriteList()
-        self.current_piece_sprites = arcade.SpriteList()
-        self.ghost_piece_sprites = arcade.SpriteList()
-        self.next_pieces_sprites = arcade.SpriteList()
-        self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
-        self.matrix_sprite.alpha = 100
-        self.on_resize(self.width, self.height)
+        locale.setlocale(locale.LC_ALL, '')
+        self.game = GameLogic(self)
             
         self.actions = {
             Status.PLAYING: {
@@ -495,7 +490,22 @@ class UI(arcade.Window):
         }
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
         
-        self.game = GameLogic(self)
+        super().__init__(
+            width = WINDOW_WIDTH,
+            height = WINDOW_HEIGHT,
+            title = WINDOW_TITLE,
+            resizable = False
+        )
+        self.bg_sprite = arcade.Sprite(WINDOW_BG)
+        self.matrix_minoes_sprites = arcade.SpriteList()
+        self.held_piece_sprites = arcade.SpriteList()
+        self.current_piece_sprites = arcade.SpriteList()
+        self.ghost_piece_sprites = arcade.SpriteList()
+        self.next_pieces_sprites = arcade.SpriteList()
+        self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
+        self.matrix_sprite.alpha = 100
+        self.on_resize(self.width, self.height)
+        
         self.new_game()
         
     def on_resize(self, width, height):
@@ -507,6 +517,10 @@ class UI(arcade.Window):
         self.matrix_sprite.center_y = center_y
         self.matrix_sprite.left = int(self.matrix_sprite.left)
         self.matrix_sprite.top = int(self.matrix_sprite.top)
+        self.update_matrix()
+        self.update_current_piece()
+        self.update_held_piece()
+        self.update_next_pieces()
         
     def new_game(self):
         self.pressed_actions = []
@@ -630,17 +644,17 @@ class UI(arcade.Window):
         self.game.lock()
         
     def update_matrix(self):
-        self.current_piece_sprites = arcade.SpriteList()
-        self.matrix_minoes_sprites = arcade.SpriteList()
-        for y, line in enumerate(self.game.matrix):
-            for x, mino_color in enumerate(line):
-                if mino_color:
-                    mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
-                    mino_sprite = arcade.Sprite(mino_sprite_path)
-                    mino_sprite.left = self.matrix_sprite.left + x*(mino_sprite.width-1)
-                    mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
-                    mino_sprite.alpha = 200
-                    self.matrix_minoes_sprites.append(mino_sprite)
+        if self.game.matrix:
+            self.matrix_minoes_sprites = arcade.SpriteList()
+            for y, line in enumerate(self.game.matrix):
+                for x, mino_color in enumerate(line):
+                    if mino_color:
+                        mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
+                        mino_sprite = arcade.Sprite(mino_sprite_path)
+                        mino_sprite.left = self.matrix_sprite.left + x*(mino_sprite.width-1)
+                        mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
+                        mino_sprite.alpha = 200
+                        self.matrix_minoes_sprites.append(mino_sprite)
         
     def display(self, string):
         print(string)
@@ -672,17 +686,39 @@ class UI(arcade.Window):
             self.current_piece_sprites.draw()
             self.ghost_piece_sprites.draw()
             self.next_pieces_sprites.draw()
+        self.draw_text()
+            
+    def draw_text(self):
+        t = time.localtime(time.time() - self.time)
+        text = """
+CONTROLS:
+move left:\t\t←
+move right:\t\t→
+soft drop:\t\t↓
+hard drop:\t\tspace
+rotate clockwise:\t↑
+rotate counter:\tZ
+hold:\t\t\tC
+pause:\tescape
+
+STATS:
+score:\t\t{:n}
+high score:\t{:n}""".format(self.game.score, self.game.high_score)
+        text += """
+time:\t\t\t%02d:%02d:%02d
+level:\t\t%d""" % (t.tm_hour-1, t.tm_min, t.tm_sec, self.game.level)
+        arcade.draw_text(text, 10, 10, arcade.color.WHITE, 18)
             
     def update_piece(self, piece, piece_sprites):
-        for mino_sprite, mino_position in zip(
-            piece_sprites, piece.minoes_positions
-        ):
-            mino_position += piece.position
-            mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
-            mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
+        if piece:
+            for mino_sprite, mino_position in zip(
+                piece_sprites, piece.minoes_positions
+            ):
+                mino_position += piece.position
+                mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
+                mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
             
     def update_next_pieces(self):
-        self.update_piece(self.game.next_pieces[0], self.next_pieces_sprites)
         for n, piece in enumerate(self.game.next_pieces):
             for mino_sprite, mino_position in zip(
                 self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_positions
@@ -695,14 +731,19 @@ class UI(arcade.Window):
         self.update_piece(self.game.held_piece, self.held_piece_sprites)
             
     def update_current_piece(self):
-        self.update_piece(self.game.current_piece, self.current_piece_sprites)
-        if self.game.current_piece.prelocked:
-            alpha = PRELOCKED_ALPHA if self.game.current_piece.prelocked else NORMAL_ALPHA
-            for mino_sprite in self.current_piece_sprites:
-                mino_sprite.alpha = alpha
-        self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
-        for mino_sprite in self.ghost_piece_sprites:
-            mino_sprite.alpha = GHOST_ALPHA
+        if self.game.current_piece:
+            self.update_piece(self.game.current_piece, self.current_piece_sprites)
+            if self.game.current_piece.prelocked:
+                alpha = PRELOCKED_ALPHA if self.game.current_piece.prelocked else NORMAL_ALPHA
+                for mino_sprite in self.current_piece_sprites:
+                    mino_sprite.alpha = alpha
+            self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
+            for mino_sprite in self.ghost_piece_sprites:
+                mino_sprite.alpha = GHOST_ALPHA
+
+    def update(self, delta_time):
+        if self.game.status == Status.PLAYING:
+            self.game.time += delta_time
             
     def game_over(self):
         arcade.unschedule(self.repeat_action)
