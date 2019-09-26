@@ -436,11 +436,11 @@ class GameLogic():
             ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level
             lock_score += ds
             self.ui.display(str(ds))
-            
-        self.add_to_score(lock_score)
         
         if self.goal <= 0:
             self.new_level()
+            
+        self.add_to_score(lock_score)
             
         self.new_current_piece()
 
@@ -465,6 +465,7 @@ class GameLogic():
                 self.ui.start_fall()
         
     def game_over(self):
+        print("GAME OVER")
         self.status = Status.OVER
         self.ui.game_over()
             
@@ -510,8 +511,7 @@ class UI(arcade.Window):
             width = WINDOW_WIDTH,
             height = WINDOW_HEIGHT,
             title = WINDOW_TITLE,
-            resizable = False,
-            antialiasing = False
+            resizable = False
         )
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
         self.matrix_minoes_sprites = arcade.SpriteList()
@@ -692,11 +692,11 @@ class UI(arcade.Window):
             self.current_piece_sprites.draw()
             self.ghost_piece_sprites.draw()
             self.next_pieces_sprites.draw()
-        arcade.render_text(
+        """arcade.render_text(
             self.text,
             self.matrix_sprite.left - TEXT_MARGIN,
             self.matrix_sprite.bottom
-        )
+        )"""
         
     def clock(self, delta_time=0):
         self.game.time += 1
@@ -742,13 +742,63 @@ pause
             self.game.nb_lines,
             self.game.goal
         )
-        self.text = arcade.create_text(
+        """self.text = arcade.create_text(
             text = text,
             color = TEXT_COLOR,
             font_size = 8,
             font_name = FONT_NAME,
             anchor_x = 'right'
+        )"""
+        print("""
+              
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+score      {:>16n}
+high score {:>16n}
+time       {:02d}:{:02d}:{:02d}
+level      {:>16n}
+lines      {:>16n}
+goal       {:>16n}""".format(
+            self.game.score,
+            self.game.high_score,
+            t.tm_hour-1, t.tm_min, t.tm_sec,
+            self.game.level,
+            self.game.nb_lines,
+            self.game.goal
         )
+    )
         
     update_score = update_text
         
