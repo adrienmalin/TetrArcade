@@ -34,6 +34,9 @@ NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 127
 GHOST_ALPHA = 50
 
+# Sound paths
+MUSIC_PATH = "sounds/music.mp3"
+
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
@@ -464,6 +467,8 @@ class UI(arcade.Window):
         self.matrix_sprite.left = int(self.matrix_sprite.left)
         self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.matrix_sprite.alpha = 100
+        
+        self.music = arcade.load_sound(MUSIC_PATH)
             
         self.actions = {
             Status.PLAYING: {
@@ -502,6 +507,7 @@ class UI(arcade.Window):
     def new_game(self):
         self.pressed_actions = []
         self.auto_repeat = False
+        arcade.play_sound(self.music)
         self.game.new_game()
     
     def display_new_level(self, level):
@@ -635,17 +641,19 @@ class UI(arcade.Window):
         
     def pause(self, delta_time=0):
         print("pause")
+        self.game.status = "paused"
+        arcade.stop_sound(self.music)
         self.stop_fall()
         self.cancel_prelock()
         self.pressed_actions = []
         self.stop_autorepeat()
-        self.game.status = "paused"
         
     def resume(self, delta_time=0):
+        self.game.status = "playing"
+        arcade.play_sound(self.music)
         self.start_fall()
         if self.game.current_piece.prelocked:
             arcade.schedule(self.lock, self.game.lock_delay)
-        self.game.status = "playing"
         
     def on_draw(self):
         arcade.start_render()
@@ -686,6 +694,7 @@ class UI(arcade.Window):
         arcade.unschedule(self.repeat_action)
         self.cancel_prelock()
         self.stop_fall()
+        arcade.stop_sound(self.music)
         print("game over")
 
         
