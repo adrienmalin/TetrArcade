@@ -34,9 +34,6 @@ NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 127
 GHOST_ALPHA = 50
 
-# Sound paths
-MUSIC_PATH = "sounds/music.mp3"
-
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
@@ -451,24 +448,15 @@ class UI(arcade.Window):
             title = WINDOW_TITLE,
             resizable = False
         )
-        center_x = self.width / 2
-        center_y = self.height / 2
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
-        self.bg_sprite.center_x = center_x
-        self.bg_sprite.center_y = center_y
         self.matrix_minoes_sprites = arcade.SpriteList()
         self.held_piece_sprites = arcade.SpriteList()
         self.current_piece_sprites = arcade.SpriteList()
         self.ghost_piece_sprites = arcade.SpriteList()
         self.next_piece_sprites = arcade.SpriteList()
         self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
-        self.matrix_sprite.center_x = center_x
-        self.matrix_sprite.center_y = center_y
-        self.matrix_sprite.left = int(self.matrix_sprite.left)
-        self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.matrix_sprite.alpha = 100
-        
-        self.music = arcade.load_sound(MUSIC_PATH)
+        self.on_resize(self.width, self.height)
             
         self.actions = {
             Status.PLAYING: {
@@ -504,10 +492,19 @@ class UI(arcade.Window):
         self.game = GameLogic(self)
         self.new_game()
         
+    def on_resize(self, width, height):
+        center_x = self.width / 2
+        center_y = self.height / 2
+        self.bg_sprite.center_x = center_x
+        self.bg_sprite.center_y = center_y
+        self.matrix_sprite.center_x = center_x
+        self.matrix_sprite.center_y = center_y
+        self.matrix_sprite.left = int(self.matrix_sprite.left)
+        self.matrix_sprite.top = int(self.matrix_sprite.top)
+        
     def new_game(self):
         self.pressed_actions = []
         self.auto_repeat = False
-        arcade.play_sound(self.music)
         self.game.new_game()
     
     def display_new_level(self, level):
@@ -642,7 +639,6 @@ class UI(arcade.Window):
     def pause(self, delta_time=0):
         print("pause")
         self.game.status = "paused"
-        arcade.stop_sound(self.music)
         self.stop_fall()
         self.cancel_prelock()
         self.pressed_actions = []
@@ -650,7 +646,6 @@ class UI(arcade.Window):
         
     def resume(self, delta_time=0):
         self.game.status = "playing"
-        arcade.play_sound(self.music)
         self.start_fall()
         if self.game.current_piece.prelocked:
             arcade.schedule(self.lock, self.game.lock_delay)
@@ -694,7 +689,6 @@ class UI(arcade.Window):
         arcade.unschedule(self.repeat_action)
         self.cancel_prelock()
         self.stop_fall()
-        arcade.stop_sound(self.music)
         print("game over")
 
         
