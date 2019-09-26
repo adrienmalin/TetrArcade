@@ -2,6 +2,10 @@
 
 Tetris clone made with Python and Arcade graphic library
 
+## Requirements
+
+[Python]<https://www.python.org/>
+
 ## Install
 
 ```shell
