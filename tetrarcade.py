@@ -37,6 +37,7 @@ GHOST_ALPHA = 50
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
+NB_NEXT_PIECES = 5
 
 # Delays
 AUTOREPEAT_DELAY = 0.170    # Official : 0.300
@@ -57,9 +58,12 @@ class Coord:
 
 # Piece init position
 MATRIX_PIECE_INIT_POSITION = Coord(4, NB_LINES)
-NEXT_PIECE_POSITION = Coord(NB_COLS+3, NB_LINES-4)
-HELD_PIECE_POSITION = Coord(-4, NB_LINES-4)
-HELD_I_POSITION = Coord(-5, NB_LINES-4)
+NEXT_PIECES_POSITIONS = [
+    Coord(NB_COLS+3, NB_LINES-4*n-3)
+    for n in range(NB_NEXT_PIECES)
+]
+HELD_PIECE_POSITION = Coord(-4, NB_LINES-3)
+HELD_I_POSITION = Coord(-5, NB_LINES-3)
 
 
 class Status:
@@ -113,7 +117,7 @@ class Tetromino:
         fall_delay = FALL_DELAY
         
         def __init__(self):
-            self.position = NEXT_PIECE_POSITION
+            self.position = NEXT_PIECES_POSITIONS[-1]
             self.minoes_positions = self.MINOES_POSITIONS
             self.orientation = 0
             self.last_rotation_point_used = None
@@ -226,7 +230,7 @@ class GameLogic():
             [None for x in range(NB_COLS)]
             for y in range(NB_LINES+3)
         ]
-        self.next_piece = Tetromino()
+        self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
         self.current_piece = None
         self.held_piece = None
         self.status = Status.PLAYING
@@ -243,13 +247,15 @@ class GameLogic():
         self.ui.display_new_level(self.level)
         
     def new_current_piece(self):
-        self.current_piece = self.next_piece
+        self.current_piece = self.next_pieces.pop(0)
         self.current_piece.position = MATRIX_PIECE_INIT_POSITION
         self.ghost_piece = self.current_piece.ghost()
         self.move_ghost()
         self.ui.new_current_piece()
-        self.next_piece = Tetromino()
-        self.ui.new_next_piece()
+        self.next_pieces.append(Tetromino())
+        for piece, position in zip (self.next_pieces, NEXT_PIECES_POSITIONS):
+            piece.position = position
+        self.ui.new_next_pieces()
         if self.can_move(
             self.current_piece.position,
             self.current_piece.minoes_positions
@@ -453,7 +459,7 @@ class UI(arcade.Window):
         self.held_piece_sprites = arcade.SpriteList()
         self.current_piece_sprites = arcade.SpriteList()
         self.ghost_piece_sprites = arcade.SpriteList()
-        self.next_piece_sprites = arcade.SpriteList()
+        self.next_pieces_sprites = arcade.SpriteList()
         self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_sprite.alpha = 100
         self.on_resize(self.width, self.height)
@@ -523,9 +529,15 @@ class UI(arcade.Window):
         self.held_piece_sprites = self.new_piece(self.game.held_piece)
         self.update_held_piece()
         
-    def new_next_piece(self):
-        self.next_piece_sprites = self.new_piece(self.game.next_piece)
-        self.update_next_piece()
+    def new_next_pieces(self):
+        self.next_pieces_sprites = arcade.SpriteList()
+        for piece in self.game.next_pieces:
+            for mino_position in piece.minoes_positions:
+                mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
+                mino_sprite = arcade.Sprite(mino_sprite_path)
+                mino_sprite.alpha = NORMAL_ALPHA
+                self.next_pieces_sprites.append(mino_sprite)
+        self.update_next_pieces()
         
     def new_current_piece(self):
         self.current_piece_sprites = self.new_piece(self.game.current_piece)
@@ -659,7 +671,7 @@ class UI(arcade.Window):
             self.held_piece_sprites.draw()
             self.current_piece_sprites.draw()
             self.ghost_piece_sprites.draw()
-            self.next_piece_sprites.draw()
+            self.next_pieces_sprites.draw()
             
     def update_piece(self, piece, piece_sprites):
         for mino_sprite, mino_position in zip(
@@ -669,8 +681,15 @@ class UI(arcade.Window):
             mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
             mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
             
-    def update_next_piece(self):
-        self.update_piece(self.game.next_piece, self.next_piece_sprites)
+    def update_next_pieces(self):
+        self.update_piece(self.game.next_pieces[0], self.next_pieces_sprites)
+        for n, piece in enumerate(self.game.next_pieces):
+            for mino_sprite, mino_position in zip(
+                self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_positions
+            ):
+                mino_position += piece.position
+                mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
+                mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
             
     def update_held_piece(self):
         self.update_piece(self.game.held_piece, self.held_piece_sprites)
