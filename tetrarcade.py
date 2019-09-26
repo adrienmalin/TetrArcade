@@ -352,7 +352,6 @@ class GameLogic():
         
     def lock(self):
         if self.move(Movement.DOWN):
-            self.ui.stop_fall()
             self.ui.cancel_prelock()
             return
             
@@ -364,6 +363,8 @@ class GameLogic():
             self.ui.update_current_piece()
             self.game_over()
             return
+        
+        self.ui.stop_fall()
         
         for mino_position in self.current_piece.minoes_positions:
             position = mino_position + self.current_piece.position
@@ -643,22 +644,6 @@ class UI(arcade.Window):
     def lock(self, delta_time=0):
         self.game.lock()
         
-    def update_matrix(self):
-        if self.game.matrix:
-            self.matrix_minoes_sprites = arcade.SpriteList()
-            for y, line in enumerate(self.game.matrix):
-                for x, mino_color in enumerate(line):
-                    if mino_color:
-                        mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
-                        mino_sprite = arcade.Sprite(mino_sprite_path)
-                        mino_sprite.left = self.matrix_sprite.left + x*(mino_sprite.width-1)
-                        mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
-                        mino_sprite.alpha = 200
-                        self.matrix_minoes_sprites.append(mino_sprite)
-        
-    def display(self, string):
-        print(string)
-        
     def swap(self, delta_time=0):
         self.game.swap()
         
@@ -675,6 +660,9 @@ class UI(arcade.Window):
         self.start_fall()
         if self.game.current_piece.prelocked:
             arcade.schedule(self.lock, self.game.lock_delay)
+        
+    def display(self, string):
+        print(string)
         
     def on_draw(self):
         arcade.start_render()
@@ -707,7 +695,20 @@ high score:\t{:n}""".format(self.game.score, self.game.high_score)
         text += """
 time:\t\t\t%02d:%02d:%02d
 level:\t\t%d""" % (t.tm_hour-1, t.tm_min, t.tm_sec, self.game.level)
-        arcade.draw_text(text, 10, 10, arcade.color.WHITE, 18)
+        arcade.draw_text(text, self.matrix_sprite.left, self.matrix_sprite.top, arcade.color.WHITE, 18)
+        
+    def update_matrix(self):
+        if self.game.matrix:
+            self.matrix_minoes_sprites = arcade.SpriteList()
+            for y, line in enumerate(self.game.matrix):
+                for x, mino_color in enumerate(line):
+                    if mino_color:
+                        mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
+                        mino_sprite = arcade.Sprite(mino_sprite_path)
+                        mino_sprite.left = self.matrix_sprite.left + x*(mino_sprite.width-1)
+                        mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
+                        mino_sprite.alpha = 200
+                        self.matrix_minoes_sprites.append(mino_sprite)
             
     def update_piece(self, piece, piece_sprites):
         if piece:
