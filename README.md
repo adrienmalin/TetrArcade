@@ -9,13 +9,13 @@ Tetris clone made with Python and Arcade graphic library
 ## Install
 
 ```shell
-python -m pip install --user -r requirements.txt
 git clone https://git.malingrey.fr/adrien/TetrArcade.git
+cd TetrArcade
+python -m pip install -r requirements.txt
 ```
 
 ## Play
 
 ```shell
-cd TetrArcade
 python tetrarcade.py
 ```
