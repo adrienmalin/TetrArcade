@@ -24,6 +24,7 @@ WINDOW_TITLE = "TETRARCADE"
 TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
 TEXT_MARGIN = 20
+FONT_SIZE = 8
 
 # Sprites paths
 WINDOW_BG = "images/bg.jpg"
@@ -692,11 +693,11 @@ class UI(arcade.Window):
             self.current_piece_sprites.draw()
             self.ghost_piece_sprites.draw()
             self.next_pieces_sprites.draw()
-        """arcade.render_text(
+        arcade.render_text(
             self.text,
             self.matrix_sprite.left - TEXT_MARGIN,
             self.matrix_sprite.bottom
-        )"""
+        )
         
     def clock(self, delta_time=0):
         self.game.time += 1
@@ -705,36 +706,24 @@ class UI(arcade.Window):
     def update_text(self):
         t = time.localtime(self.game.time)
         text = """
-score
-{:>16n}
-high score
-{:>16n}
-time
-        {:02d}:{:02d}:{:02d}
-level
-{:>16n}
-lines
-{:>16n}
-goal
-{:>16n}
+score{:>13n}
+high score{:>8n}
+time      {:02d}:{:02d}:{:02d}
+leveL{:>13n}
+lines{:>13n}
+goal{:>14n}
 
-move left
-               ←
-move right
-               →
-soft drop
-               ↓
-hard drop
-           space
-rotate clockwise
-               ↑
-rotate
+
+move left        ←
+move right       →
+soft drop        ↓
+hard drop    SPACE
+rotate           ↑
+clockwise
+rotate           Z
 counterclockwise
-               Z
-hold
-               C
-pause
-          escape""".format(
+hold             C
+pause          ESC""".format(
             self.game.score,
             self.game.high_score,
             t.tm_hour-1, t.tm_min, t.tm_sec,
@@ -742,64 +731,13 @@ pause
             self.game.nb_lines,
             self.game.goal
         )
-        """self.text = arcade.create_text(
+        self.text = arcade.create_text(
             text = text,
             color = TEXT_COLOR,
-            font_size = 8,
+            font_size = FONT_SIZE,
             font_name = FONT_NAME,
             anchor_x = 'right'
-        )"""
-        print("""
-              
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-score      {:>16n}
-high score {:>16n}
-time       {:02d}:{:02d}:{:02d}
-level      {:>16n}
-lines      {:>16n}
-goal       {:>16n}""".format(
-            self.game.score,
-            self.game.high_score,
-            t.tm_hour-1, t.tm_min, t.tm_sec,
-            self.game.level,
-            self.game.nb_lines,
-            self.game.goal
         )
-    )
-        
     update_score = update_text
         
     def update_matrix(self):
