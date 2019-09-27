@@ -223,11 +223,9 @@ class GameLogic():
         self.current_piece.position = MATRIX_PIECE_INIT_POSITION
         self.ghost_piece = self.current_piece.ghost()
         self.move_ghost()
-        self.ui.new_current_piece()
         self.next_pieces.append(Tetromino())
         for piece, position in zip (self.next_pieces, NEXT_PIECES_POSITIONS):
             piece.position = position
-        self.ui.new_next_pieces()
         if self.can_move(
             self.current_piece.position,
             self.current_piece.minoes_positions
@@ -329,7 +327,6 @@ class GameLogic():
             for mino_position in self.current_piece.minoes_positions
         ):
             self.current_piece.prelocked = False
-            self.ui.update_current_piece()
             self.game_over()
             return
 
@@ -416,17 +413,14 @@ class GameLogic():
             else:
                 self.held_piece.position = HELD_PIECE_POSITION
             self.held_piece.minoes_positions = self.held_piece.MINOES_POSITIONS
-            self.ui.new_held_piece()
             if self.current_piece:
                 self.current_piece.position = MATRIX_PIECE_INIT_POSITION
                 self.ghost_piece = self.current_piece.ghost()
                 self.move_ghost()
-                self.ui.new_current_piece()
                 self.ui.start_fall()
             else:
                 self.new_current_piece()
 
     def game_over(self):
         self.status = Status.OVER
-        self.ui.game_over()
 

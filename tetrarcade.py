@@ -151,11 +151,7 @@ class TetrArcade(arcade.Window):
         self.matrix_sprite.center_y = center_y
         self.matrix_sprite.left = int(self.matrix_sprite.left)
         self.matrix_sprite.top = int(self.matrix_sprite.top)
-        self.update_matrix()
-        if self.game.status in (Status.PLAYING, Status.OVER):
-            self.update_current_piece()
-            self.update_held_piece()
-            self.update_next_pieces()
+        self.load_matrix()
 
     def new_game(self):
         self.pressed_actions = []
@@ -163,42 +159,102 @@ class TetrArcade(arcade.Window):
         self.auto_repeat = False
         arcade.schedule(self.clock, 1)
         self.game.new_game()
-        self.update_matrix()
-        if self.game.status in (Status.PLAYING, Status.OVER):
-            self.update_current_piece()
-            self.update_held_piece()
-            self.update_next_pieces()
-
-    def new_piece(self, piece):
-        piece_sprites = arcade.SpriteList()
-        for mino_position in piece.minoes_positions:
-            mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
-            mino_sprite = arcade.Sprite(mino_sprite_path)
-            mino_sprite.alpha = NORMAL_ALPHA
-            piece_sprites.append(mino_sprite)
-        return piece_sprites
-
-    def new_held_piece(self):
-        self.held_piece_sprites = self.new_piece(self.game.held_piece)
-        self.update_held_piece()
-
-    def new_next_pieces(self):
-        self.next_pieces_sprites = arcade.SpriteList()
-        for piece in self.game.next_pieces:
-            for mino_position in piece.minoes_positions:
-                mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
-                mino_sprite = arcade.Sprite(mino_sprite_path)
-                mino_sprite.alpha = NORMAL_ALPHA
-                self.next_pieces_sprites.append(mino_sprite)
-        self.update_next_pieces()
+        self.new_current_piece()
 
     def new_current_piece(self):
-        self.current_piece_sprites = self.new_piece(self.game.current_piece)
-        self.ghost_piece_sprites = self.new_piece(self.game.ghost_piece)
-        self.update_current_piece()
+        self.load_next_pieces()
+        self.load_current_piece()
+        self.load_matrix()
         if self.pressed_actions:
             self.stop_autorepeat()
             arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+
+    def move_left(self, delta_time=0):
+        self.game.move(Movement.LEFT)
+
+    def move_right(self, delta_time=0):
+        self.game.move(Movement.RIGHT)
+
+    def soft_drop(self, delta_time=0):
+        self.game.soft_drop()
+
+    def hard_drop(self, delta_time=0):
+        self.game.hard_drop()
+        self.lock()
+
+    def rotate_counterclockwise(self, delta_time=0):
+        self.game.rotate(Rotation.COUNTERCLOCKWISE)
+
+    def rotate_clockwise(self, delta_time=0):
+        self.game.rotate(Rotation.CLOCKWISE)
+
+    def fall(self, delta_time=0):
+        self.game.move(Movement.DOWN)
+
+    def start_fall(self):
+        arcade.schedule(self.fall, self.game.fall_delay)
+
+    def stop_fall(self):
+        arcade.unschedule(self.fall)
+
+    def prelock(self, restart=False):
+        if restart:
+            self.cancel_prelock()
+        arcade.schedule(self.lock, self.game.lock_delay)
+
+    def cancel_prelock(self):
+        arcade.unschedule(self.lock)
+
+    def lock(self, delta_time=0):
+        self.game.lock()
+        self.load_matrix()
+        self.load_next_pieces()
+        self.load_current_piece()
+        if self.game.status == Status.PLAYING:
+            self.new_current_piece()
+        elif self.game.status == Status.OVER:
+            self.game_over()
+
+    def swap(self, delta_time=0):
+        self.game.swap()
+        self.load_held_piece()
+        self.load_current_piece()
+
+    def pause(self, delta_time=0):
+        self.highlight_texts = ("""PAUSE
+
+PRESS
+[ESC]
+TO
+RESUME""",)
+        self.game.status = Status.PAUSED
+        self.stop_fall()
+        self.cancel_prelock()
+        arcade.unschedule(self.clock)
+        self.pressed_actions = []
+        self.stop_autorepeat()
+
+    def resume(self, delta_time=0):
+        self.highlight_texts = []
+        self.game.status = Status.PLAYING
+        self.start_fall()
+        if self.game.current_piece.prelocked:
+            arcade.schedule(self.lock, self.game.lock_delay)
+        arcade.schedule(self.clock, 1)
+
+    def game_over(self):
+        arcade.unschedule(self.repeat_action)
+        self.cancel_prelock()
+        self.stop_fall()
+        arcade.unschedule(self.clock)
+        self.highlight_texts = ("""GAME
+OVER
+
+PRESS
+[ENTER]
+TO
+PLAY
+AGAIN""",)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -244,91 +300,6 @@ class TetrArcade(arcade.Window):
         self.auto_repeat = False
         arcade.unschedule(self.repeat_action)
 
-    def move_left(self, delta_time=0):
-        if self.game.move(Movement.LEFT):
-            self.update_current_piece()
-
-    def move_right(self, delta_time=0):
-        if self.game.move(Movement.RIGHT):
-            self.update_current_piece()
-
-    def soft_drop(self, delta_time=0):
-        if self.game.soft_drop():
-            self.update_current_piece()
-
-    def hard_drop(self, delta_time=0):
-        self.game.hard_drop()
-        self.lock()
-
-    def rotate_counterclockwise(self, delta_time=0):
-        if self.game.rotate(Rotation.COUNTERCLOCKWISE):
-            self.update_current_piece()
-
-    def rotate_clockwise(self, delta_time=0):
-        if self.game.rotate(Rotation.CLOCKWISE):
-            self.update_current_piece()
-
-    def fall(self, delta_time=0):
-        if self.game.move(Movement.DOWN):
-            self.update_current_piece()
-
-    def start_fall(self):
-        arcade.schedule(self.fall, self.game.fall_delay)
-
-    def stop_fall(self):
-        arcade.unschedule(self.fall)
-
-    def prelock(self, restart=False):
-        if restart:
-            self.cancel_prelock()
-        arcade.schedule(self.lock, self.game.lock_delay)
-
-    def cancel_prelock(self):
-        arcade.unschedule(self.lock)
-
-    def lock(self, delta_time=0):
-        self.game.lock()
-        self.update_matrix()
-
-    def swap(self, delta_time=0):
-        self.game.swap()
-
-    def pause(self, delta_time=0):
-        self.highlight_texts = ("""PAUSE
-
-PRESS
-[ESC]
-TO
-RESUME""",)
-        self.game.status = Status.PAUSED
-        self.stop_fall()
-        self.cancel_prelock()
-        arcade.unschedule(self.clock)
-        self.pressed_actions = []
-        self.stop_autorepeat()
-
-    def resume(self, delta_time=0):
-        self.highlight_texts = []
-        self.game.status = Status.PLAYING
-        self.start_fall()
-        if self.game.current_piece.prelocked:
-            arcade.schedule(self.lock, self.game.lock_delay)
-        arcade.schedule(self.clock, 1)
-
-    def game_over(self):
-        arcade.unschedule(self.repeat_action)
-        self.cancel_prelock()
-        self.stop_fall()
-        arcade.unschedule(self.clock)
-        self.highlight_texts = ("""GAME
-OVER
-
-PRESS
-[ENTER]
-TO
-PLAY
-AGAIN""",)
-
     def add_highlight_text(self, string):
         self.highlight_texts.append(string)
         arcade.schedule(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
@@ -341,7 +312,32 @@ AGAIN""",)
     def clock(self, delta_time=0):
         self.game.time += delta_time
 
-    def update_matrix(self):
+    def load_piece(self, piece):
+        piece_sprites = arcade.SpriteList()
+        for mino_position in piece.minoes_positions:
+            mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
+            mino_sprite = arcade.Sprite(mino_sprite_path)
+            mino_sprite.alpha = NORMAL_ALPHA
+            piece_sprites.append(mino_sprite)
+        return piece_sprites
+
+    def load_held_piece(self):
+        self.held_piece_sprites = self.load_piece(self.game.held_piece)
+
+    def load_next_pieces(self):
+        self.next_pieces_sprites = arcade.SpriteList()
+        for piece in self.game.next_pieces:
+            for mino_position in piece.minoes_positions:
+                mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
+                mino_sprite = arcade.Sprite(mino_sprite_path)
+                mino_sprite.alpha = NORMAL_ALPHA
+                self.next_pieces_sprites.append(mino_sprite)
+
+    def load_current_piece(self):
+        self.current_piece_sprites = self.load_piece(self.game.current_piece)
+        self.ghost_piece_sprites = self.load_piece(self.game.ghost_piece)
+
+    def load_matrix(self):
         if self.game.matrix:
             self.matrix_minoes_sprites = arcade.SpriteList()
             for y, line in enumerate(self.game.matrix):
@@ -363,39 +359,37 @@ AGAIN""",)
                 mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
                 mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
 
-    def update_next_pieces(self):
-        for n, piece in enumerate(self.game.next_pieces):
-            for mino_sprite, mino_position in zip(
-                self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_positions
-            ):
-                mino_position += piece.position
-                mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
-                mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
-
-    def update_held_piece(self):
-        self.update_piece(self.game.held_piece, self.held_piece_sprites)
-
-    def update_current_piece(self):
-        if self.game.current_piece:
-            self.update_piece(self.game.current_piece, self.current_piece_sprites)
-            if self.game.current_piece.prelocked:
-                alpha = PRELOCKED_ALPHA if self.game.current_piece.prelocked else NORMAL_ALPHA
-                for mino_sprite in self.current_piece_sprites:
-                    mino_sprite.alpha = alpha
-            self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
-            for mino_sprite in self.ghost_piece_sprites:
-                mino_sprite.alpha = GHOST_ALPHA
-
     def on_draw(self):
         arcade.start_render()
         self.bg_sprite.draw()
         self.matrix_sprite.draw()
         if not self.game.status == Status.PAUSED:
             self.matrix_minoes_sprites.draw()
+
+            self.update_piece(self.game.held_piece, self.held_piece_sprites)
             self.held_piece_sprites.draw()
+
+            self.update_piece(self.game.current_piece, self.current_piece_sprites)
+            if self.game.current_piece.prelocked:
+                alpha = PRELOCKED_ALPHA if self.game.current_piece.prelocked else NORMAL_ALPHA
+                for mino_sprite in self.current_piece_sprites:
+                    mino_sprite.alpha = alpha
             self.current_piece_sprites.draw()
+
+            self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
+            for mino_sprite in self.ghost_piece_sprites:
+                mino_sprite.alpha = GHOST_ALPHA
             self.ghost_piece_sprites.draw()
+
+            for n, piece in enumerate(self.game.next_pieces):
+                for mino_sprite, mino_position in zip(
+                    self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_positions
+                ):
+                    mino_position += piece.position
+                    mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
+                    mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
             self.next_pieces_sprites.draw()
+
         arcade.render_text(
             self.general_text,
             self.matrix_sprite.left - TEXT_MARGIN,
@@ -423,6 +417,7 @@ AGAIN""",)
                 font_name = FONT_NAME,
                 anchor_x = 'right'
             )
+
         if self.highlight_texts:
             arcade.draw_text(
                 text = self.highlight_texts[0],
