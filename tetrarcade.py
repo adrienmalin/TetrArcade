@@ -23,17 +23,17 @@ WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
 # Delays (seconds)
-AUTOREPEAT_DELAY = 0.300    # Official : 0.300
+AUTOREPEAT_DELAY = 0.220    # Official : 0.300
 AUTOREPEAT_INTERVAL = 0.010 # Official : 0.010
 HIGHLIGHT_TEXT_DISPLAY_DELAY = 1
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
-HIGHLIGHT_TEXT_COLOR = arcade.color.BEAU_BLUE
+HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
 TEXT_MARGIN = 40
 FONT_SIZE = 10
-HIGHLIGHT_TEXT_FONT_SIZE = 20
+HIGHLIGHT_TEXT_FONT_SIZE = 19
 TEXT_HEIGHT = 13.2
 TEXT = """SCORE
 HIGH SCORE
@@ -299,7 +299,7 @@ class TetrArcade(arcade.Window):
         arcade.unschedule(self.repeat_action)
         self.cancel_prelock()
         self.stop_fall()
-        print("game over")
+        self.highlight_texts = ("GAME\nOVER",)
 
     def add_highlight_text(self, string):
         self.highlight_texts.append(string)
