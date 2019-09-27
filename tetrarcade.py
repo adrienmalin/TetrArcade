@@ -16,15 +16,36 @@ import time
 
 # Constants
 # Window
-WINDOW_WIDTH = 600
+WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
-TEXT_MARGIN = 20
-FONT_SIZE = 8
+TEXT_MARGIN = 40
+FONT_SIZE = 10
+TEXT_HEIGHT = 13.2
+TEXT = """SCORE
+HIGH SCORE
+TIME
+LEVEL
+GOAL
+LINES
+
+
+
+
+MOVE LEFT        ←
+MOVE RIGHT       →
+SOFT DROP        ↓
+HARD DROP    SPACE
+ROTATE           ↑
+CLOCKWISE
+ROTATE           Z
+COUNTERCLOCKWISE
+HOLD             C
+PAUSE          ESC"""
 
 # Sprites paths
 WINDOW_BG = "images/bg.jpg"
@@ -39,17 +60,18 @@ MINOES_SPRITES_PATHS = {
     "magenta": "images/magenta_mino.png"
 }
 
-# Mino transparency
+# Transparency (0=invisible, 255=opaque)
 NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 127
 GHOST_ALPHA = 50
+MATRIX_SRITE_ALPHA = 100
 
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
 NB_NEXT_PIECES = 5
 
-# Delays
+# Delays (seconds)
 AUTOREPEAT_DELAY = 0.170    # Official : 0.300
 AUTOREPEAT_INTERVAL = 0.010 # Official : 0.010
 LOCK_DELAY = 0.5
@@ -57,7 +79,7 @@ FALL_DELAY = 1
 
 
 class Coord:
-    
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -77,7 +99,7 @@ HELD_I_POSITION = Coord(-5, NB_LINES-3)
 
 
 class Status:
-    
+
     STARTING = "starting"
     PLAYING =  "playing"
     PAUSED =   "paused"
@@ -85,28 +107,28 @@ class Status:
 
 
 class Movement:
-    
+
     LEFT  = Coord(-1, 0)
     RIGHT = Coord(1, 0)
     DOWN  = Coord(0, -1)
 
 
 class Rotation:
-    
+
     CLOCKWISE = -1
     COUNTERCLOCKWISE = 1
-    
-    
+
+
 class T_Spin:
-    
+
     NO_T_SPIN =   ""
     MINI_T_SPIN = "MINI T-SPIN"
     T_SPIN =      "T-SPIN"
-  
-    
+
+
 class Tetromino:
-    
-    
+
+
     class TetrominoBase:
         # Super rotation system
         SRS = {
@@ -125,7 +147,7 @@ class Tetromino:
         }
         lock_delay = LOCK_DELAY
         fall_delay = FALL_DELAY
-        
+
         def __init__(self):
             self.position = NEXT_PIECES_POSITIONS[-1]
             self.minoes_positions = self.MINOES_POSITIONS
@@ -133,26 +155,26 @@ class Tetromino:
             self.last_rotation_point_used = None
             self.hold_enabled = True
             self.prelocked = False
-            
+
         def ghost(self):
             return self.__class__()
-    
-    
+
+
     class O(TetrominoBase):
-        
+
         SRS = {
             Rotation.COUNTERCLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
             Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple())
         }
         MINOES_POSITIONS = (Coord(0, 0), Coord(1, 0), Coord(0, 1), Coord(1, 1))
         MINOES_COLOR = "yellow"
-    
+
         def rotate(self, direction):
             return False
-    
-    
+
+
     class I(TetrominoBase):
-        
+
         SRS = {
             Rotation.COUNTERCLOCKWISE: (
                 (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
@@ -169,50 +191,50 @@ class Tetromino:
         }
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(2, 0))
         MINOES_COLOR = "cyan"
-    
-    
+
+
     class T(TetrominoBase):
-        
+
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
         MINOES_COLOR = "magenta"
-    
-    
+
+
     class L(TetrominoBase):
-        
+
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
         MINOES_COLOR = "orange"
-    
-    
+
+
     class J(TetrominoBase):
-        
+
         MINOES_POSITIONS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "blue"
-    
-    
+
+
     class S(TetrominoBase):
-        
+
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
         MINOES_COLOR = "green"
-    
-    
+
+
     class Z(TetrominoBase):
-        
+
         MINOES_POSITIONS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "red"
-        
-        
+
+
     TETROMINOES = (O, I, T, L, J, S, Z)
     random_bag = []
-    
+
     def __new__(cls):
         if not cls.random_bag:
             cls.random_bag = list(cls.TETROMINOES)
             random.shuffle(cls.random_bag)
         return cls.random_bag.pop()()
-        
-    
+
+
 class GameLogic():
-    
+
     T_SLOT = (Coord(-1, 1), Coord(1, 1), Coord(1, -1), Coord(-1, -1))
     SCORES = (
         {"name": "", T_Spin.NO_T_SPIN: 0, T_Spin.MINI_T_SPIN: 1, T_Spin.T_SPIN: 4},
@@ -221,7 +243,7 @@ class GameLogic():
         {"name": "TRIPLE", T_Spin.NO_T_SPIN: 5, T_Spin.T_SPIN: 16},
         {"name": "TETRIS", T_Spin.NO_T_SPIN: 8}
     )
-    
+
     def __init__(self, ui):
         self.ui = ui
         self.high_score = 0
@@ -231,17 +253,17 @@ class GameLogic():
         self.current_piece = None
         self.held_piece = None
         self.time = 0
-        
+
     def new_game(self):
         self.level = 0
         self.score = 0
         self.nb_lines = 0
         self.goal = 0
         self.time = 0
-        
+
         self.lock_delay = LOCK_DELAY
         self.fall_delay = FALL_DELAY
-        
+
         self.matrix = [
             [None for x in range(NB_COLS)]
             for y in range(NB_LINES+3)
@@ -252,7 +274,7 @@ class GameLogic():
         self.status = Status.PLAYING
         self.new_level()
         self.new_current_piece()
-    
+
     def new_level(self):
         self.level += 1
         self.goal += 5 * self.level
@@ -260,8 +282,7 @@ class GameLogic():
             self.fall_delay = pow(0.8 - ((self.level-1)*0.007), self.level-1)
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
-        self.ui.display_new_level(self.level)
-        
+
     def new_current_piece(self):
         self.current_piece = self.next_pieces.pop(0)
         self.current_piece.position = MATRIX_PIECE_INIT_POSITION
@@ -286,13 +307,13 @@ class GameLogic():
             and 0 <= position.y
             and not self.matrix[position.y][position.x]
         )
-        
+
     def can_move(self, potential_position, minoes_positions):
         return all(
             self.cell_is_free(potential_position+mino_position)
             for mino_position in minoes_positions
         )
-        
+
     def move(self, movement, prelock_on_stuck=True):
         potential_position = self.current_piece.position + movement
         if self.can_move(potential_position, self.current_piece.minoes_positions):
@@ -334,7 +355,7 @@ class GameLogic():
                 return True
         else:
             return False
-        
+
     def move_ghost(self):
         self.ghost_piece.position = self.current_piece.position
         self.ghost_piece.minoes_positions = self.current_piece.minoes_positions
@@ -343,13 +364,12 @@ class GameLogic():
             self.ghost_piece.minoes_positions
         ):
             self.ghost_piece.position += Movement.DOWN
-            
+
     def add_to_score(self, ds):
         self.score += ds
         if self.score > self.high_score:
             self.high_score = self.score
-        self.ui.update_score()
-        
+
     def soft_drop(self):
         if self.move(Movement.DOWN):
             self.add_to_score(1)
@@ -363,12 +383,12 @@ class GameLogic():
             drop_score += 2
         self.add_to_score(drop_score)
         return drop_score
-        
+
     def lock(self):
         if self.move(Movement.DOWN):
             self.ui.cancel_prelock()
             return
-            
+
         if all(
             (mino_position + self.current_piece.position).y >= NB_LINES
             for mino_position in self.current_piece.minoes_positions
@@ -377,9 +397,9 @@ class GameLogic():
             self.ui.update_current_piece()
             self.game_over()
             return
-        
+
         self.ui.stop_fall()
-        
+
         for mino_position in self.current_piece.minoes_positions:
             position = mino_position + self.current_piece.position
             if position.y <= NB_LINES+3:
@@ -390,9 +410,10 @@ class GameLogic():
             if all(mino for mino in line):
                 nb_lines_cleared += 1
                 self.matrix.pop(y)
-                self.matrix.append([None for x in range(NB_COLS)])    
-        self.ui.update_matrix()
-                
+                self.matrix.append([None for x in range(NB_COLS)])
+        if nb_lines_cleared:
+            self.nb_lines += nb_lines_cleared
+
         if (
             self.current_piece.__class__ == Tetromino.T
             and self.current_piece.last_rotation_point_used is not None
@@ -404,7 +425,7 @@ class GameLogic():
             b = not self.cell_is_free(position+self.T_SLOT[(orientation-1)%nb_orientations])
             c = not self.cell_is_free(position+self.T_SLOT[(orientation-3)%nb_orientations])
             d = not self.cell_is_free(position+self.T_SLOT[(orientation-2)%nb_orientations])
-            
+
             if self.current_piece.last_rotation_point_used == 5 or (a and b and (c or d)):
                 t_spin = T_Spin.T_SPIN
             elif c and d and (a or b):
@@ -413,7 +434,7 @@ class GameLogic():
                 t_spin = T_Spin.NO_T_SPIN
         else:
             t_spin = T_Spin.NO_T_SPIN
-    
+
         if t_spin:
             self.ui.display(t_spin)
         if nb_lines_cleared:
@@ -421,28 +442,27 @@ class GameLogic():
             self.combo += 1
         else:
             self.combo = -1
-            
+
         lock_score = 0
-            
+
         if nb_lines_cleared or t_spin:
-            self.nb_lines += nb_lines_cleared
             ds = self.SCORES[nb_lines_cleared][t_spin]
             self.goal -= ds
             ds *= 100 * self.level
             lock_score += ds
             self.ui.display(str(ds))
-            
+
         if self.combo >= 1:
             self.ui.display("COMBO x%d" % self.combo)
             ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level
             lock_score += ds
             self.ui.display(str(ds))
-        
+
         if self.goal <= 0:
             self.new_level()
-            
+
         self.add_to_score(lock_score)
-            
+
         self.new_current_piece()
 
     def swap(self):
@@ -458,25 +478,27 @@ class GameLogic():
                 self.held_piece.position = HELD_PIECE_POSITION
             self.held_piece.minoes_positions = self.held_piece.MINOES_POSITIONS
             self.ui.new_held_piece()
-            if not self.current_piece:
-                self.new_current_piece()
-            else:
+            if self.current_piece:
                 self.current_piece.position = MATRIX_PIECE_INIT_POSITION
+                self.ghost_piece = self.current_piece.ghost()
+                self.move_ghost()
                 self.ui.new_current_piece()
                 self.ui.start_fall()
-        
+            else:
+                self.new_current_piece()
+
     def game_over(self):
         print("GAME OVER")
         self.status = Status.OVER
         self.ui.game_over()
-            
+
 
 class UI(arcade.Window):
-    
+
     def __init__(self):
         locale.setlocale(locale.LC_ALL, '')
         self.game = GameLogic(self)
-            
+
         self.actions = {
             Status.PLAYING: {
                 arcade.key.LEFT:      self.move_left,
@@ -507,12 +529,13 @@ class UI(arcade.Window):
             }
         }
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
-        
+
         super().__init__(
             width = WINDOW_WIDTH,
             height = WINDOW_HEIGHT,
             title = WINDOW_TITLE,
-            resizable = False
+            resizable = False,
+            antialiasing = False
         )
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
         self.matrix_minoes_sprites = arcade.SpriteList()
@@ -521,11 +544,19 @@ class UI(arcade.Window):
         self.ghost_piece_sprites = arcade.SpriteList()
         self.next_pieces_sprites = arcade.SpriteList()
         self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
-        self.matrix_sprite.alpha = 100
+        self.matrix_sprite.alpha = MATRIX_SRITE_ALPHA
         self.on_resize(self.width, self.height)
-        
+        self.general_text = arcade.create_text(
+            text = TEXT,
+            color = TEXT_COLOR,
+            font_size = FONT_SIZE,
+            font_name = FONT_NAME,
+            anchor_x = 'right'
+        )
+
+
         self.new_game()
-        
+
     def on_resize(self, width, height):
         center_x = self.width / 2
         center_y = self.height / 2
@@ -536,20 +567,17 @@ class UI(arcade.Window):
         self.matrix_sprite.left = int(self.matrix_sprite.left)
         self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.update_matrix()
-        self.update_current_piece()
-        self.update_held_piece()
-        self.update_next_pieces()
-        
+        if self.game.status in (Status.PLAYING, Status.OVER):
+            self.update_current_piece()
+            self.update_held_piece()
+            self.update_next_pieces()
+
     def new_game(self):
         self.pressed_actions = []
         self.auto_repeat = False
-        self.game.new_game()
-        self.update_text()
         arcade.schedule(self.clock, 1)
-    
-    def display_new_level(self, level):
-        print("Level", level)
-        
+        self.game.new_game()
+
     def new_piece(self, piece):
         piece_sprites = arcade.SpriteList()
         for mino_position in piece.minoes_positions:
@@ -558,11 +586,11 @@ class UI(arcade.Window):
             mino_sprite.alpha = NORMAL_ALPHA
             piece_sprites.append(mino_sprite)
         return piece_sprites
-        
+
     def new_held_piece(self):
         self.held_piece_sprites = self.new_piece(self.game.held_piece)
         self.update_held_piece()
-        
+
     def new_next_pieces(self):
         self.next_pieces_sprites = arcade.SpriteList()
         for piece in self.game.next_pieces:
@@ -572,12 +600,15 @@ class UI(arcade.Window):
                 mino_sprite.alpha = NORMAL_ALPHA
                 self.next_pieces_sprites.append(mino_sprite)
         self.update_next_pieces()
-        
+
     def new_current_piece(self):
         self.current_piece_sprites = self.new_piece(self.game.current_piece)
         self.ghost_piece_sprites = self.new_piece(self.game.ghost_piece)
         self.update_current_piece()
-                
+        if self.pressed_actions:
+            self.stop_autorepeat()
+            arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
@@ -590,7 +621,7 @@ class UI(arcade.Window):
                     self.stop_autorepeat()
                     self.pressed_actions.append(action)
                     arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
-            
+
     def on_key_release(self, key, modifiers):
         try:
             action = self.actions[self.game.status][key]
@@ -602,7 +633,7 @@ class UI(arcade.Window):
                 if not self.pressed_actions:
                     self.stop_autorepeat()
                     arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
-                    
+
     def repeat_action(self, delta_time=0):
         if self.pressed_actions:
             self.pressed_actions[-1]()
@@ -613,59 +644,60 @@ class UI(arcade.Window):
         else:
             self.auto_repeat = False
             arcade.unschedule(self.repeat_action)
-            
+
     def stop_autorepeat(self):
         self.auto_repeat = False
         arcade.unschedule(self.repeat_action)
-        
+
     def move_left(self, delta_time=0):
         if self.game.move(Movement.LEFT):
             self.update_current_piece()
-    
+
     def move_right(self, delta_time=0):
         if self.game.move(Movement.RIGHT):
             self.update_current_piece()
-    
+
     def soft_drop(self, delta_time=0):
         if self.game.soft_drop():
             self.update_current_piece()
-    
+
     def hard_drop(self, delta_time=0):
         self.game.hard_drop()
         self.lock()
-    
+
     def rotate_counterclockwise(self, delta_time=0):
         if self.game.rotate(Rotation.COUNTERCLOCKWISE):
             self.update_current_piece()
-    
+
     def rotate_clockwise(self, delta_time=0):
         if self.game.rotate(Rotation.CLOCKWISE):
             self.update_current_piece()
-    
+
     def fall(self, delta_time=0):
         if self.game.move(Movement.DOWN):
             self.update_current_piece()
-            
+
     def start_fall(self):
         arcade.schedule(self.fall, self.game.fall_delay)
-            
+
     def stop_fall(self):
         arcade.unschedule(self.fall)
-            
+
     def prelock(self, restart=False):
         if restart:
             self.cancel_prelock()
         arcade.schedule(self.lock, self.game.lock_delay)
-        
+
     def cancel_prelock(self):
         arcade.unschedule(self.lock)
-            
+
     def lock(self, delta_time=0):
         self.game.lock()
-        
+        self.update_matrix()
+
     def swap(self, delta_time=0):
         self.game.swap()
-        
+
     def pause(self, delta_time=0):
         print("pause")
         self.game.status = "paused"
@@ -673,73 +705,25 @@ class UI(arcade.Window):
         self.cancel_prelock()
         self.pressed_actions = []
         self.stop_autorepeat()
-        
+
     def resume(self, delta_time=0):
         self.game.status = "playing"
         self.start_fall()
         if self.game.current_piece.prelocked:
             arcade.schedule(self.lock, self.game.lock_delay)
-        
+
+    def game_over(self):
+        arcade.unschedule(self.repeat_action)
+        self.cancel_prelock()
+        self.stop_fall()
+        print("game over")
+
     def display(self, string):
         print(string)
-        
-    def on_draw(self):
-        arcade.start_render()
-        self.bg_sprite.draw()
-        self.matrix_sprite.draw()
-        if not self.game.status == "paused":
-            self.matrix_minoes_sprites.draw()
-            self.held_piece_sprites.draw()
-            self.current_piece_sprites.draw()
-            self.ghost_piece_sprites.draw()
-            self.next_pieces_sprites.draw()
-        arcade.render_text(
-            self.text,
-            self.matrix_sprite.left - TEXT_MARGIN,
-            self.matrix_sprite.bottom
-        )
-        
+
     def clock(self, delta_time=0):
-        self.game.time += 1
-        self.update_text()
-            
-    def update_text(self):
-        t = time.localtime(self.game.time)
-        text = """
-score{:>13n}
-high score{:>8n}
-time      {:02d}:{:02d}:{:02d}
-leveL{:>13n}
-lines{:>13n}
-goal{:>14n}
+        self.game.time += delta_time
 
-
-move left        ←
-move right       →
-soft drop        ↓
-hard drop    SPACE
-rotate           ↑
-clockwise
-rotate           Z
-counterclockwise
-hold             C
-pause          ESC""".format(
-            self.game.score,
-            self.game.high_score,
-            t.tm_hour-1, t.tm_min, t.tm_sec,
-            self.game.level,
-            self.game.nb_lines,
-            self.game.goal
-        )
-        self.text = arcade.create_text(
-            text = text,
-            color = TEXT_COLOR,
-            font_size = FONT_SIZE,
-            font_name = FONT_NAME,
-            anchor_x = 'right'
-        )
-    update_score = update_text
-        
     def update_matrix(self):
         if self.game.matrix:
             self.matrix_minoes_sprites = arcade.SpriteList()
@@ -752,7 +736,7 @@ pause          ESC""".format(
                         mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
                         mino_sprite.alpha = 200
                         self.matrix_minoes_sprites.append(mino_sprite)
-            
+
     def update_piece(self, piece, piece_sprites):
         if piece:
             for mino_sprite, mino_position in zip(
@@ -761,7 +745,7 @@ pause          ESC""".format(
                 mino_position += piece.position
                 mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
                 mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
-            
+
     def update_next_pieces(self):
         for n, piece in enumerate(self.game.next_pieces):
             for mino_sprite, mino_position in zip(
@@ -770,10 +754,10 @@ pause          ESC""".format(
                 mino_position += piece.position
                 mino_sprite.left = self.matrix_sprite.left + mino_position.x*(mino_sprite.width-1)
                 mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
-            
+
     def update_held_piece(self):
         self.update_piece(self.game.held_piece, self.held_piece_sprites)
-            
+
     def update_current_piece(self):
         if self.game.current_piece:
             self.update_piece(self.game.current_piece, self.current_piece_sprites)
@@ -784,18 +768,49 @@ pause          ESC""".format(
             self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
             for mino_sprite in self.ghost_piece_sprites:
                 mino_sprite.alpha = GHOST_ALPHA
-            
-    def game_over(self):
-        arcade.unschedule(self.repeat_action)
-        self.cancel_prelock()
-        self.stop_fall()
-        print("game over")
 
-        
+    def on_draw(self):
+        arcade.start_render()
+        self.bg_sprite.draw()
+        self.matrix_sprite.draw()
+        if not self.game.status == Status.PAUSED:
+            self.matrix_minoes_sprites.draw()
+            self.held_piece_sprites.draw()
+            self.current_piece_sprites.draw()
+            self.ghost_piece_sprites.draw()
+            self.next_pieces_sprites.draw()
+        arcade.render_text(
+            self.general_text,
+            self.matrix_sprite.left - TEXT_MARGIN,
+            self.matrix_sprite.bottom
+        )
+        t = time.localtime(self.game.time)
+        for y, text in enumerate(
+            (
+                "{:n}".format(self.game.nb_lines),
+                "{:n}".format(self.game.goal),
+                "{:n}".format(self.game.level),
+                "{:02d}:{:02d}:{:02d}".format(t.tm_hour-1, t.tm_min, t.tm_sec),
+                "{:n}".format(self.game.high_score),
+                "{:n}".format(self.game.score)
+            ),
+            start=14
+        ):
+            arcade.draw_text(
+                text = text,
+                start_x = self.matrix_sprite.left - TEXT_MARGIN,
+                start_y = self.matrix_sprite.bottom + y*TEXT_HEIGHT,
+                color = TEXT_COLOR,
+                font_size = FONT_SIZE,
+                align = 'right',
+                font_name = FONT_NAME,
+                anchor_x = 'right'
+            )
+
+
 def main():
     UI()
     arcade.run()
-    
+
 if __name__ == "__main__":
     main()
-    
