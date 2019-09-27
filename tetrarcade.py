@@ -33,7 +33,7 @@ HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
 TEXT_MARGIN = 40
 FONT_SIZE = 10
-HIGHLIGHT_TEXT_FONT_SIZE = 19
+HIGHLIGHT_TEXT_FONT_SIZE = 20
 TEXT_HEIGHT = 13.2
 TEXT = """SCORE
 HIGH SCORE
@@ -109,6 +109,9 @@ class TetrArcade(arcade.Window):
             Status.PAUSED: {
                 arcade.key.ESCAPE:    self.resume,
                 arcade.key.F1:        self.resume
+            },
+            Status.OVER: {
+                arcade.key.ENTER:     self.new_game
             }
         }
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
@@ -136,7 +139,6 @@ class TetrArcade(arcade.Window):
             font_name = FONT_NAME,
             anchor_x = 'right'
         )
-        self.highlight_texts = []
 
         self.new_game()
 
@@ -157,9 +159,15 @@ class TetrArcade(arcade.Window):
 
     def new_game(self):
         self.pressed_actions = []
+        self.highlight_texts = []
         self.auto_repeat = False
         arcade.schedule(self.clock, 1)
         self.game.new_game()
+        self.update_matrix()
+        if self.game.status in (Status.PLAYING, Status.OVER):
+            self.update_current_piece()
+            self.update_held_piece()
+            self.update_next_pieces()
 
     def new_piece(self, piece):
         piece_sprites = arcade.SpriteList()
@@ -212,10 +220,14 @@ class TetrArcade(arcade.Window):
             pass
         else:
             if action in self.autorepeatable_actions:
-                self.pressed_actions.remove(action)
-                if not self.pressed_actions:
-                    self.stop_autorepeat()
-                    arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+                try:
+                    self.pressed_actions.remove(action)
+                except ValueError:
+                    pass
+                else:
+                    if not self.pressed_actions:
+                        self.stop_autorepeat()
+                        arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
 
     def repeat_action(self, delta_time=0):
         if self.pressed_actions:
@@ -282,24 +294,40 @@ class TetrArcade(arcade.Window):
         self.game.swap()
 
     def pause(self, delta_time=0):
-        print("pause")
-        self.game.status = "paused"
+        self.highlight_texts = ("""PAUSE
+
+PRESS
+[ESC]
+TO
+RESUME""",)
+        self.game.status = Status.PAUSED
         self.stop_fall()
         self.cancel_prelock()
+        arcade.unschedule(self.clock)
         self.pressed_actions = []
         self.stop_autorepeat()
 
     def resume(self, delta_time=0):
-        self.game.status = "playing"
+        self.highlight_texts = []
+        self.game.status = Status.PLAYING
         self.start_fall()
         if self.game.current_piece.prelocked:
             arcade.schedule(self.lock, self.game.lock_delay)
+        arcade.schedule(self.clock, 1)
 
     def game_over(self):
         arcade.unschedule(self.repeat_action)
         self.cancel_prelock()
         self.stop_fall()
-        self.highlight_texts = ("GAME\nOVER",)
+        arcade.unschedule(self.clock)
+        self.highlight_texts = ("""GAME
+OVER
+
+PRESS
+[ENTER]
+TO
+PLAY
+AGAIN""",)
 
     def add_highlight_text(self, string):
         self.highlight_texts.append(string)
