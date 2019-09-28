@@ -195,8 +195,8 @@ class TetrisLogic():
     )
     scheduler = AbstractScheduler()
 
-    def __init__(self):
-        self.high_score = 0
+    def __init__(self, high_score=0):
+        self.high_score = high_score
         self.state = State.STARTING
         self.matrix = []
         self.next_pieces = []

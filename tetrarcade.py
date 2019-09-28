@@ -2,6 +2,7 @@
 import sys
 import locale
 import time
+import os
 
 try:
     import arcade
@@ -79,7 +80,7 @@ PRESS
 TO PLAY
 AGAIN"""
 
-# Sprites paths
+# Paths
 WINDOW_BG = "images/bg.jpg"
 MATRIX_SPRITE_PATH = "images/matrix.png"
 MINOES_SPRITES_PATHS = {
@@ -91,6 +92,12 @@ MINOES_SPRITES_PATHS = {
     "red":     "images/red_mino.png",
     "magenta": "images/magenta_mino.png"
 }
+if sys.platform == "win32":
+    USER_PROFILE_DIR = os.environ.get("appdata", os.path.expanduser("~\Appdata\Roaming"))
+else:
+    USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
+HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
 
 # Transparency (0=invisible, 255=opaque)
 NORMAL_ALPHA = 200
@@ -123,8 +130,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     scheduler = ArcadeScheduler()
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, high_score):
+        super().__init__(high_score)
 
         locale.setlocale(locale.LC_ALL, '')
 
@@ -385,8 +392,23 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
 
 def main():
-    TetrArcade()
+    try:
+        with open(HIGH_SCORE_PATH, "r") as f:
+           high_score = int(f.read())
+    except:
+        high_score = 0
+
+    tetrarcade = TetrArcade(high_score)
     arcade.run()
+
+    if not os.path.exists(USER_PROFILE_DIR):
+        os.makedirs(USER_PROFILE_DIR)
+    try:
+        with open(HIGH_SCORE_PATH, mode='w') as f:
+            f.write(str(tetrarcade.high_score))
+    except Exception as e:
+        print("High score could not be saved:")
+        print(e)
 
 if __name__ == "__main__":
     main()
