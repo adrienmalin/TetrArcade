@@ -13,7 +13,7 @@ python -m pip install --user arcade
 """
 )
 
-from gamelogic import GameLogic, Status, Movement, Rotation
+from tetris import Tetris, Status
 
 
 # Constants
@@ -89,11 +89,12 @@ GHOST_ALPHA = 50
 MATRIX_SRITE_ALPHA = 100
 
 
-class TetrArcade(arcade.Window):
+class TetrArcade(Tetris, arcade.Window):
 
     def __init__(self):
+        super().__init__()
+
         locale.setlocale(locale.LC_ALL, '')
-        self.game = GameLogic(self)
 
         self.actions = {
             Status.PLAYING: {
@@ -129,7 +130,11 @@ class TetrArcade(arcade.Window):
         }
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
 
-        super().__init__(
+        self.highlight_texts = []
+        self.pressed_actions = []
+
+        arcade.Window.__init__(
+            self,
             width = WINDOW_WIDTH,
             height = WINDOW_HEIGHT,
             title = WINDOW_TITLE,
@@ -153,112 +158,45 @@ class TetrArcade(arcade.Window):
             anchor_x = 'right'
         )
 
-        self.new_game()
-
-    def on_resize(self, width, height):
-        center_x = self.width / 2
-        center_y = self.height / 2
-        self.bg_sprite.center_x = center_x
-        self.bg_sprite.center_y = center_y
-        self.matrix_sprite.center_x = center_x
-        self.matrix_sprite.center_y = center_y
-        self.matrix_sprite.left = int(self.matrix_sprite.left)
-        self.matrix_sprite.top = int(self.matrix_sprite.top)
-        self.load_matrix()
-
     def new_game(self):
-        self.pressed_actions = []
         self.highlight_texts = []
+        self.pressed_actions = []
         self.auto_repeat = False
-        arcade.schedule(self.clock, 1)
-        self.game.new_game()
-        self.new_current_piece()
+        super().new_game()
 
     def new_current_piece(self):
-        self.load_next_pieces()
-        self.load_current_piece()
-        self.load_matrix()
+        super().new_current_piece()
+        self.reload_next_pieces()
+        self.reload_current_piece()
+        self.reload_matrix()
         if self.pressed_actions:
             self.stop_autorepeat()
             arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
 
-    def move_left(self, delta_time=0):
-        self.game.move(Movement.LEFT)
+    def lock(self, _=0):
+        super().lock()
+        self.reload_matrix()
+        self.reload_next_pieces()
+        self.reload_current_piece()
 
-    def move_right(self, delta_time=0):
-        self.game.move(Movement.RIGHT)
+    def swap(self, _=0):
+        super().swap()
+        self.reload_held_piece()
+        self.reload_current_piece()
 
-    def soft_drop(self, delta_time=0):
-        self.game.soft_drop()
-
-    def hard_drop(self, delta_time=0):
-        self.game.hard_drop()
-        self.lock()
-
-    def rotate_counterclockwise(self, delta_time=0):
-        self.game.rotate(Rotation.COUNTERCLOCKWISE)
-
-    def rotate_clockwise(self, delta_time=0):
-        self.game.rotate(Rotation.CLOCKWISE)
-
-    def fall(self, delta_time=0):
-        self.game.move(Movement.DOWN)
-
-    def start_fall(self):
-        arcade.schedule(self.fall, self.game.fall_delay)
-
-    def stop_fall(self):
-        arcade.unschedule(self.fall)
-
-    def prelock(self, restart=False):
-        if restart:
-            self.cancel_prelock()
-        arcade.schedule(self.lock, self.game.lock_delay)
-
-    def cancel_prelock(self):
-        arcade.unschedule(self.lock)
-
-    def lock(self, delta_time=0):
-        self.game.lock()
-        self.load_matrix()
-        self.load_next_pieces()
-        self.load_current_piece()
-        if self.game.status == Status.PLAYING:
-            self.new_current_piece()
-        elif self.game.status == Status.OVER:
-            self.game_over()
-
-    def swap(self, delta_time=0):
-        self.game.swap()
-        self.load_held_piece()
-        self.load_current_piece()
-
-    def pause(self, delta_time=0):
-        self.game.status = Status.PAUSED
-        self.stop_fall()
-        self.cancel_prelock()
-        arcade.unschedule(self.clock)
+    def pause(self, _=0):
+        super().pause()
         self.pressed_actions = []
         self.stop_autorepeat()
 
-    def resume(self, delta_time=0):
-        self.highlight_texts = []
-        self.game.status = Status.PLAYING
-        self.start_fall()
-        if self.game.current_piece.prelocked:
-            arcade.schedule(self.lock, self.game.lock_delay)
-        arcade.schedule(self.clock, 1)
-
     def game_over(self):
-        arcade.unschedule(self.repeat_action)
-        self.cancel_prelock()
-        self.stop_fall()
-        arcade.unschedule(self.clock)
+        super().game_over()
+        self.unschedule(self.repeat_action)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
-                action = self.actions[self.game.status][key_or_modifier]
+                action = self.actions[self.status][key_or_modifier]
             except KeyError:
                 pass
             else:
@@ -270,7 +208,7 @@ class TetrArcade(arcade.Window):
 
     def on_key_release(self, key, modifiers):
         try:
-            action = self.actions[self.game.status][key]
+            action = self.actions[self.status][key]
         except KeyError:
             pass
         else:
@@ -297,21 +235,18 @@ class TetrArcade(arcade.Window):
 
     def stop_autorepeat(self):
         self.auto_repeat = False
-        arcade.unschedule(self.repeat_action)
+        self.unschedule(self.repeat_action)
 
-    def add_highlight_text(self, string):
-        self.highlight_texts.append(string)
-        arcade.schedule(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
+    def show_text(self, text):
+        self.highlight_texts.append(text)
+        self.schedule(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
-    def del_highlight_text(self, delta_time=0):
+    def del_highlight_text(self, _=0):
         self.highlight_texts.pop(0)
         if not self.highlight_texts:
-            arcade.unschedule(self.del_highlight_text)
+            self.unschedule(self.del_highlight_text)
 
-    def clock(self, delta_time=0):
-        self.game.time += delta_time
-
-    def load_piece(self, piece):
+    def reload_piece(self, piece):
         piece_sprites = arcade.SpriteList()
         for mino_position in piece.minoes_positions:
             mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
@@ -320,26 +255,26 @@ class TetrArcade(arcade.Window):
             piece_sprites.append(mino_sprite)
         return piece_sprites
 
-    def load_held_piece(self):
-        self.held_piece_sprites = self.load_piece(self.game.held_piece)
+    def reload_held_piece(self):
+        self.held_piece_sprites = self.reload_piece(self.held_piece)
 
-    def load_next_pieces(self):
+    def reload_next_pieces(self):
         self.next_pieces_sprites = arcade.SpriteList()
-        for piece in self.game.next_pieces:
+        for piece in self.next_pieces:
             for mino_position in piece.minoes_positions:
                 mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
                 mino_sprite = arcade.Sprite(mino_sprite_path)
                 mino_sprite.alpha = NORMAL_ALPHA
                 self.next_pieces_sprites.append(mino_sprite)
 
-    def load_current_piece(self):
-        self.current_piece_sprites = self.load_piece(self.game.current_piece)
-        self.ghost_piece_sprites = self.load_piece(self.game.ghost_piece)
+    def reload_current_piece(self):
+        self.current_piece_sprites = self.reload_piece(self.current_piece)
+        self.ghost_piece_sprites = self.reload_piece(self.ghost_piece)
 
-    def load_matrix(self):
-        if self.game.matrix:
+    def reload_matrix(self):
+        if self.matrix:
             self.matrix_minoes_sprites = arcade.SpriteList()
-            for y, line in enumerate(self.game.matrix):
+            for y, line in enumerate(self.matrix):
                 for x, mino_color in enumerate(line):
                     if mino_color:
                         mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
@@ -362,25 +297,25 @@ class TetrArcade(arcade.Window):
         arcade.start_render()
         self.bg_sprite.draw()
         self.matrix_sprite.draw()
-        if not self.game.status == Status.PAUSED:
+        if not self.status == Status.PAUSED:
             self.matrix_minoes_sprites.draw()
 
-            self.update_piece(self.game.held_piece, self.held_piece_sprites)
+            self.update_piece(self.held_piece, self.held_piece_sprites)
             self.held_piece_sprites.draw()
 
-            self.update_piece(self.game.current_piece, self.current_piece_sprites)
-            if self.game.current_piece.prelocked:
-                alpha = PRELOCKED_ALPHA if self.game.current_piece.prelocked else NORMAL_ALPHA
+            self.update_piece(self.current_piece, self.current_piece_sprites)
+            if self.current_piece.prelocked:
+                alpha = PRELOCKED_ALPHA if self.current_piece.prelocked else NORMAL_ALPHA
                 for mino_sprite in self.current_piece_sprites:
                     mino_sprite.alpha = alpha
             self.current_piece_sprites.draw()
 
-            self.update_piece(self.game.ghost_piece, self.ghost_piece_sprites)
+            self.update_piece(self.ghost_piece, self.ghost_piece_sprites)
             for mino_sprite in self.ghost_piece_sprites:
                 mino_sprite.alpha = GHOST_ALPHA
             self.ghost_piece_sprites.draw()
 
-            for n, piece in enumerate(self.game.next_pieces):
+            for n, piece in enumerate(self.next_pieces):
                 for mino_sprite, mino_position in zip(
                     self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_positions
                 ):
@@ -394,15 +329,15 @@ class TetrArcade(arcade.Window):
             self.matrix_sprite.left - TEXT_MARGIN,
             self.matrix_sprite.bottom
         )
-        t = time.localtime(self.game.time)
+        t = time.localtime(self.time)
         for y, text in enumerate(
             (
-                "{:n}".format(self.game.nb_lines),
-                "{:n}".format(self.game.goal),
-                "{:n}".format(self.game.level),
+                "{:n}".format(self.nb_lines),
+                "{:n}".format(self.goal),
+                "{:n}".format(self.level),
                 "{:02d}:{:02d}:{:02d}".format(t.tm_hour-1, t.tm_min, t.tm_sec),
-                "{:n}".format(self.game.high_score),
-                "{:n}".format(self.game.score)
+                "{:n}".format(self.high_score),
+                "{:n}".format(self.score)
             ),
             start=14
         ):
@@ -420,7 +355,7 @@ class TetrArcade(arcade.Window):
             Status.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
             Status.PAUSED: PAUSE_TEXT,
             Status.OVER: GAME_OVER_TEXT
-        }.get(self.game.status, "")
+        }.get(self.status, "")
         if highlight_text:
             arcade.draw_text(
                 text = highlight_text,
@@ -434,9 +369,27 @@ class TetrArcade(arcade.Window):
                 anchor_y = 'center'
             )
 
+    def on_resize(self, width, height):
+        center_x = self.width / 2
+        center_y = self.height / 2
+        self.bg_sprite.center_x = center_x
+        self.bg_sprite.center_y = center_y
+        self.matrix_sprite.center_x = center_x
+        self.matrix_sprite.center_y = center_y
+        self.matrix_sprite.left = int(self.matrix_sprite.left)
+        self.matrix_sprite.top = int(self.matrix_sprite.top)
+        self.reload_matrix()
+
+    def schedule(self, task, period):
+        arcade.schedule(task, period)
+
+    def unschedule(self, task):
+        arcade.unschedule(task)
+
 
 def main():
-    TetrArcade()
+    tetrarcade = TetrArcade()
+    tetrarcade.new_game()
     arcade.run()
 
 if __name__ == "__main__":

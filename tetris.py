@@ -167,7 +167,7 @@ class Tetromino:
         return cls.random_bag.pop()()
 
 
-class GameLogic():
+class Tetris():
 
     T_SLOT = (Coord(-1, 1), Coord(1, 1), Coord(1, -1), Coord(-1, -1))
     SCORES = (
@@ -178,8 +178,7 @@ class GameLogic():
         {"name": "TETRIS", T_Spin.NO_T_SPIN: 8}
     )
 
-    def __init__(self, ui):
-        self.ui = ui
+    def __init__(self):
         self.high_score = 0
         self.status = Status.STARTING
         self.matrix = []
@@ -206,8 +205,8 @@ class GameLogic():
         self.current_piece = None
         self.held_piece = None
         self.status = Status.PLAYING
+        self.schedule(self.clock, 1)
         self.new_level()
-        self.new_current_piece()
 
     def new_level(self):
         self.level += 1
@@ -216,7 +215,9 @@ class GameLogic():
             self.fall_delay = pow(0.8 - ((self.level-1)*0.007), self.level-1)
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
-        self.ui.add_highlight_text("Level\n{:n}".format(self.level))
+        self.show_text("Level\n{:n}".format(self.level))
+        self.schedule(self.drop, self.fall_delay)
+        self.new_current_piece()
 
     def new_current_piece(self):
         self.current_piece = self.next_pieces.pop(0)
@@ -226,12 +227,10 @@ class GameLogic():
         self.next_pieces.append(Tetromino())
         for piece, position in zip (self.next_pieces, NEXT_PIECES_POSITIONS):
             piece.position = position
-        if self.can_move(
+        if not self.can_move(
             self.current_piece.position,
             self.current_piece.minoes_positions
         ):
-            self.ui.start_fall()
-        else:
             self.game_over()
 
     def cell_is_free(self, position):
@@ -251,7 +250,8 @@ class GameLogic():
         potential_position = self.current_piece.position + movement
         if self.can_move(potential_position, self.current_piece.minoes_positions):
             if self.current_piece.prelocked:
-                self.ui.prelock(restart=True)
+                self.unschedule(self.lock)
+                self.schedule(self.lock, self.lock_delay)
             self.current_piece.position = potential_position
             self.current_piece.last_rotation_point_used = None
             self.move_ghost()
@@ -262,8 +262,14 @@ class GameLogic():
                 and movement == Movement.DOWN
             ):
                 self.current_piece.prelocked = True
-                self.ui.prelock()
+                self.schedule(self.lock, self.lock_delay)
             return False
+
+    def move_left(self, delta_time=0):
+        self.move(Movement.LEFT)
+
+    def move_right(self, delta_time=0):
+        self.move(Movement.RIGHT)
 
     def rotate(self, direction):
         rotated_minoes_positions = tuple(
@@ -277,7 +283,8 @@ class GameLogic():
             potential_position = self.current_piece.position + liberty_degree
             if self.can_move(potential_position, rotated_minoes_positions):
                 if self.current_piece.prelocked:
-                    self.ui.prelock(restart=True)
+                    self.unschedule(self.lock)
+                    self.schedule(self.lock, self.lock_delay)
                 self.current_piece.position = potential_position
                 self.current_piece.minoes_positions = rotated_minoes_positions
                 self.current_piece.orientation = (
@@ -289,6 +296,12 @@ class GameLogic():
         else:
             return False
 
+    def rotate_counterclockwise(self, delta_time=0):
+        self.rotate(Rotation.COUNTERCLOCKWISE)
+
+    def rotate_clockwise(self, delta_time=0):
+        self.rotate(Rotation.CLOCKWISE)
+
     def move_ghost(self):
         self.ghost_piece.position = self.current_piece.position
         self.ghost_piece.minoes_positions = self.current_piece.minoes_positions
@@ -297,6 +310,9 @@ class GameLogic():
             self.ghost_piece.minoes_positions
         ):
             self.ghost_piece.position += Movement.DOWN
+
+    def drop(self, _=0):
+        self.move(Movement.DOWN)
 
     def add_to_score(self, ds):
         self.score += ds
@@ -311,26 +327,22 @@ class GameLogic():
             return False
 
     def hard_drop(self):
-        drop_score = 0
         while self.move(Movement.DOWN, prelock_on_stuck=False):
-            drop_score += 2
-        self.add_to_score(drop_score)
-        return drop_score
+            self.add_to_score(2)
+        self.lock()
 
     def lock(self):
         if self.move(Movement.DOWN):
-            self.ui.cancel_prelock()
             return
 
         if all(
             (mino_position + self.current_piece.position).y >= NB_LINES
             for mino_position in self.current_piece.minoes_positions
         ):
-            self.current_piece.prelocked = False
             self.game_over()
             return
 
-        self.ui.stop_fall()
+        self.unschedule(self.lock)
 
         for mino_position in self.current_piece.minoes_positions:
             position = mino_position + self.current_piece.position
@@ -392,21 +404,21 @@ class GameLogic():
             lock_strings.append(str(ds))
 
         if lock_strings:
-            self.ui.add_highlight_text("\n".join(lock_strings))
+            self.show_text("\n".join(lock_strings))
 
         self.add_to_score(lock_score)
 
         if self.goal <= 0:
+            self.unschedule(self.drop)
             self.new_level()
-
-        self.new_current_piece()
+        else:
+            self.new_current_piece()
 
     def swap(self):
         if self.current_piece.hold_enabled:
             self.current_piece.hold_enabled = False
             self.current_piece.prelocked = False
-            self.ui.cancel_prelock()
-            self.ui.stop_fall()
+            self.unschedule(self.lock)
             self.current_piece, self.held_piece = self.held_piece, self.current_piece
             if self.held_piece.__class__ == Tetromino.I:
                 self.held_piece.position = HELD_I_POSITION
@@ -417,10 +429,39 @@ class GameLogic():
                 self.current_piece.position = MATRIX_PIECE_INIT_POSITION
                 self.ghost_piece = self.current_piece.ghost()
                 self.move_ghost()
-                self.ui.start_fall()
             else:
                 self.new_current_piece()
 
+    def pause(self, _=0):
+        self.status = Status.PAUSED
+        self.unschedule(self.drop)
+        self.unschedule(self.lock)
+        self.unschedule(self.clock)
+        self.pressed_actions = []
+        self.stop_autorepeat()
+
+    def resume(self, delta_time=0):
+        self.status = Status.PLAYING
+        self.schedule(self.drop, self.fall_delay)
+        if self.current_piece.prelocked:
+            self.schedule(self.lock, self.lock_delay)
+        self.schedule(self.clock, 1)
+
+    def clock(self, delta_time=1):
+        self.time += delta_time
+
     def game_over(self):
         self.status = Status.OVER
+        self.unschedule(self.lock)
+        self.unschedule(self.drop)
+        self.unschedule(self.clock)
+
+    def schedule(task, period):
+        raise NotImplementedError
+
+    def unschedule(self, task):
+        raise NotImplementedError
+
+    def show_text(self, text):
+        print(text)
 
