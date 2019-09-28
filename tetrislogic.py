@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import random
 
-
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
@@ -65,10 +64,10 @@ class T_Spin:
 class AbstractScheduler:
 
     def start(task, period):
-        raise NotImplementedError
+        raise Warning("AbstractScheduler.start is not implemented.")
 
     def stop(self, task):
-        raise NotImplementedError
+        raise Warning("AbstractScheduler.stop is not implemented.")
 
     def restart(self, task, period):
         self.stop(task)
@@ -195,8 +194,8 @@ class TetrisLogic():
     )
     scheduler = AbstractScheduler()
 
-    def __init__(self, high_score=0):
-        self.high_score = high_score
+    def __init__(self):
+        self.load_high_score()
         self.state = State.STARTING
         self.matrix = []
         self.next_pieces = []
@@ -476,6 +475,7 @@ class TetrisLogic():
         self.scheduler.stop(self.drop)
         self.scheduler.stop(self.update_time)
         self.scheduler.stop(self.repeat_action)
+        self.save_high_score()
 
     def update_time(self, delta_time=1):
         self.time += delta_time
@@ -511,5 +511,19 @@ class TetrisLogic():
         self.scheduler.stop(self.repeat_action)
 
     def show_text(self, text):
-        raise NotImplementedError
+        print(text)
+        raise Warning("TetrisLogic.show_text not implemented.")
+
+    def load_high_score(self):
+        self.high_score = 0
+        raise Warning(
+            """TetrisLogic.load_high_score not implemented.
+High score is set to 0"""
+        )
+
+    def save_high_score(self):
+        raise Warning(
+            """TetrisLogic.save_high_score not implemented.
+High score is not saved"""
+        )
 

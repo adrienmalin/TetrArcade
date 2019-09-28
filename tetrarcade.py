@@ -130,8 +130,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     scheduler = ArcadeScheduler()
 
-    def __init__(self, high_score):
-        super().__init__(high_score)
+    def __init__(self):
+        super().__init__()
 
         locale.setlocale(locale.LC_ALL, '')
 
@@ -390,25 +390,32 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.reload_matrix()
 
+    def load_high_score(self):
+        try:
+            with open(HIGH_SCORE_PATH, "r") as f:
+               self.high_score = int(f.read())
+        except:
+            self.high_score = 0
+
+    def save_high_score(self):
+        try:
+            if not os.path.exists(USER_PROFILE_DIR):
+                os.makedirs(USER_PROFILE_DIR)
+            with open(HIGH_SCORE_PATH, mode='w') as f:
+                f.write(str(self.high_score))
+        except Exception as e:
+            sys.exit(
+                """High score: {:n}
+High score could not be saved:
+""".format(self.high_score)
+                + str(e)
+            )
+
 
 def main():
-    try:
-        with open(HIGH_SCORE_PATH, "r") as f:
-           high_score = int(f.read())
-    except:
-        high_score = 0
-
-    tetrarcade = TetrArcade(high_score)
+    tetrarcade = TetrArcade()
     arcade.run()
-
-    if not os.path.exists(USER_PROFILE_DIR):
-        os.makedirs(USER_PROFILE_DIR)
-    try:
-        with open(HIGH_SCORE_PATH, mode='w') as f:
-            f.write(str(tetrarcade.high_score))
-    except Exception as e:
-        print("High score could not be saved:")
-        print(e)
+    tetrarcade.save_high_score()
 
 if __name__ == "__main__":
     main()
