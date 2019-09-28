@@ -13,7 +13,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetris import Tetris, Status, AbstractScheduler
+from tetrislogic import TetrisLogic, Status, AbstractScheduler
 
 
 # Constants
@@ -105,8 +105,7 @@ class ArcadeScheduler(AbstractScheduler):
         self._tasks = {}
 
     def start(self, task, period):
-        def _task(delta_time):
-            task()
+        _task = lambda _: task()
         self._tasks[task] = _task
         arcade.schedule(_task, period)
 
@@ -120,7 +119,7 @@ class ArcadeScheduler(AbstractScheduler):
             del self._tasks[task]
 
 
-class TetrArcade(Tetris, arcade.Window):
+class TetrArcade(TetrisLogic, arcade.Window):
 
     scheduler = ArcadeScheduler()
 
@@ -129,7 +128,7 @@ class TetrArcade(Tetris, arcade.Window):
 
         locale.setlocale(locale.LC_ALL, '')
 
-        self.actions = {
+        self.KEY_MAP = {
             Status.STARTING: {
                 arcade.key.ENTER:     self.new_game
             },
@@ -217,7 +216,7 @@ class TetrArcade(Tetris, arcade.Window):
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
-                action = self.actions[self.status][key_or_modifier]
+                action = self.KEY_MAP[self.status][key_or_modifier]
             except KeyError:
                 pass
             else:
@@ -225,7 +224,7 @@ class TetrArcade(Tetris, arcade.Window):
 
     def on_key_release(self, key, modifiers):
         try:
-            action = self.actions[self.status][key]
+            action = self.KEY_MAP[self.status][key]
         except KeyError:
             pass
         else:

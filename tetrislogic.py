@@ -182,7 +182,7 @@ class Tetromino:
         return cls.random_bag.pop()()
 
 
-class Tetris():
+class TetrisLogic():
 
 
     T_SLOT = (Coord(-1, 1), Coord(1, 1), Coord(1, -1), Coord(-1, -1))
@@ -227,7 +227,7 @@ class Tetris():
         self.current_piece = None
         self.held_piece = None
         self.status = Status.PLAYING
-        self.scheduler.start(self.clock, 1)
+        self.scheduler.start(self.update_time, 1)
         self.new_level()
 
     def new_level(self):
@@ -460,7 +460,7 @@ class Tetris():
         self.status = Status.PAUSED
         self.scheduler.stop(self.drop)
         self.scheduler.stop(self.lock)
-        self.scheduler.stop(self.clock)
+        self.scheduler.stop(self.update_time)
         self.pressed_actions = []
         self.stop_autorepeat()
 
@@ -469,15 +469,15 @@ class Tetris():
         self.scheduler.start(self.drop, self.fall_delay)
         if self.current_piece.prelocked:
             self.scheduler.start(self.lock, self.lock_delay)
-        self.scheduler.start(self.clock, 1)
+        self.scheduler.start(self.update_time, 1)
 
     def game_over(self):
         self.status = Status.OVER
         self.scheduler.stop(self.drop)
-        self.scheduler.stop(self.clock)
+        self.scheduler.stop(self.update_time)
         self.scheduler.stop(self.repeat_action)
 
-    def clock(self, delta_time=1):
+    def update_time(self, delta_time=1):
         self.time += delta_time
 
     def do_action(self, action):
