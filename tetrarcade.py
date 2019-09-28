@@ -13,7 +13,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetris import Tetris, Status, Scheduler
+from tetris import Tetris, Status, AbstractScheduler
 
 
 # Constants
@@ -99,7 +99,7 @@ GHOST_ALPHA = 50
 MATRIX_SRITE_ALPHA = 100
 
 
-class ArcadeScheduler(Scheduler):
+class ArcadeScheduler(AbstractScheduler):
 
     def __init__(self):
         self._tasks = {}
@@ -232,9 +232,8 @@ class TetrArcade(Tetris, arcade.Window):
             self.remove_action(action)
 
     def show_text(self, text):
-        self.scheduler.stop(self.del_highlight_text)
         self.highlight_texts.append(text)
-        self.scheduler.start(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
+        self.scheduler.restart(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
     def del_highlight_text(self):
         if self.highlight_texts:

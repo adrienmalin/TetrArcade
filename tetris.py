@@ -62,10 +62,23 @@ class T_Spin:
     T_SPIN =      "T-SPIN"
 
 
+class AbstractScheduler:
+
+    def start(task, period):
+        raise NotImplementedError
+
+    def stop(self, task):
+        raise NotImplementedError
+
+    def restrart(self, task, period):
+        self.stop(task)
+        self.start(task, period)
+
+
 class Tetromino:
 
 
-    class TetrominoBase:
+    class AbstractTetromino:
         # Super rotation system
         SRS = {
             Rotation.COUNTERCLOCKWISE: (
@@ -96,7 +109,7 @@ class Tetromino:
             return self.__class__()
 
 
-    class O(TetrominoBase):
+    class O(AbstractTetromino):
 
         SRS = {
             Rotation.COUNTERCLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
@@ -109,7 +122,7 @@ class Tetromino:
             return False
 
 
-    class I(TetrominoBase):
+    class I(AbstractTetromino):
 
         SRS = {
             Rotation.COUNTERCLOCKWISE: (
@@ -129,31 +142,31 @@ class Tetromino:
         MINOES_COLOR = "cyan"
 
 
-    class T(TetrominoBase):
+    class T(AbstractTetromino):
 
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
         MINOES_COLOR = "magenta"
 
 
-    class L(TetrominoBase):
+    class L(AbstractTetromino):
 
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
         MINOES_COLOR = "orange"
 
 
-    class J(TetrominoBase):
+    class J(AbstractTetromino):
 
         MINOES_POSITIONS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "blue"
 
 
-    class S(TetrominoBase):
+    class S(AbstractTetromino):
 
         MINOES_POSITIONS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
         MINOES_COLOR = "green"
 
 
-    class Z(TetrominoBase):
+    class Z(AbstractTetromino):
 
         MINOES_POSITIONS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "red"
@@ -169,15 +182,6 @@ class Tetromino:
         return cls.random_bag.pop()()
 
 
-class Scheduler:
-
-    def start(task, period):
-        raise NotImplementedError
-
-    def stop(self, task):
-        raise NotImplementedError
-
-
 class Tetris():
 
 
@@ -189,7 +193,7 @@ class Tetris():
         {"name": "TRIPLE", T_Spin.NO_T_SPIN: 5, T_Spin.T_SPIN: 16},
         {"name": "TETRIS", T_Spin.NO_T_SPIN: 8}
     )
-    scheduler = Scheduler()
+    scheduler = AbstractScheduler()
 
     def __init__(self):
         self.high_score = 0
@@ -251,68 +255,11 @@ class Tetris():
         ):
             self.game_over()
 
-    def cell_is_free(self, position):
-        return (
-            0 <= position.x < NB_COLS
-            and 0 <= position.y
-            and not self.matrix[position.y][position.x]
-        )
-
-    def can_move(self, potential_position, minoes_positions):
-        return all(
-            self.cell_is_free(potential_position+mino_position)
-            for mino_position in minoes_positions
-        )
-
-    def move(self, movement, prelock_on_stuck=True):
-        potential_position = self.current_piece.position + movement
-        if self.can_move(potential_position, self.current_piece.minoes_positions):
-            if self.current_piece.prelocked:
-                self.scheduler.stop(self.lock)
-                self.scheduler.start(self.lock, self.lock_delay)
-            self.current_piece.position = potential_position
-            self.current_piece.last_rotation_point_used = None
-            self.move_ghost()
-            return True
-        else:
-            if (
-                prelock_on_stuck and not self.current_piece.prelocked
-                and movement == Movement.DOWN
-            ):
-                self.current_piece.prelocked = True
-                self.scheduler.start(self.lock, self.lock_delay)
-            return False
-
     def move_left(self):
         self.move(Movement.LEFT)
 
     def move_right(self):
         self.move(Movement.RIGHT)
-
-    def rotate(self, direction):
-        rotated_minoes_positions = tuple(
-            Coord(-direction*mino_position.y, direction*mino_position.x)
-            for mino_position in self.current_piece.minoes_positions
-        )
-        for rotation_point, liberty_degree in enumerate(
-            self.current_piece.SRS[direction][self.current_piece.orientation],
-            start = 1
-        ):
-            potential_position = self.current_piece.position + liberty_degree
-            if self.can_move(potential_position, rotated_minoes_positions):
-                if self.current_piece.prelocked:
-                    self.scheduler.stop(self.lock)
-                    self.scheduler.start(self.lock, self.lock_delay)
-                self.current_piece.position = potential_position
-                self.current_piece.minoes_positions = rotated_minoes_positions
-                self.current_piece.orientation = (
-                    (self.current_piece.orientation + direction) % 4
-                )
-                self.current_piece.last_rotation_point_used = rotation_point
-                self.move_ghost()
-                return True
-        else:
-            return False
 
     def rotate_counterclockwise(self):
         self.rotate(Rotation.COUNTERCLOCKWISE)
@@ -329,16 +276,8 @@ class Tetris():
         ):
             self.ghost_piece.position += Movement.DOWN
 
-    def drop(self):
-        self.move(Movement.DOWN)
-
-    def add_to_score(self, ds):
-        self.score += ds
-        if self.score > self.high_score:
-            self.high_score = self.score
-
     def soft_drop(self):
-        if self.move(Movement.DOWN):
+        if self.drop():
             self.add_to_score(1)
             return True
         else:
@@ -348,6 +287,69 @@ class Tetris():
         while self.move(Movement.DOWN, prelock_on_stuck=False):
             self.add_to_score(2)
         self.lock()
+
+    def drop(self):
+        self.move(Movement.DOWN)
+
+    def move(self, movement, prelock_on_stuck=True):
+        potential_position = self.current_piece.position + movement
+        if self.can_move(potential_position, self.current_piece.minoes_positions):
+            if self.current_piece.prelocked:
+                self.scheduler.restart(self.lock, self.lock_delay)
+            self.current_piece.position = potential_position
+            self.current_piece.last_rotation_point_used = None
+            self.move_ghost()
+            return True
+        else:
+            if (
+                prelock_on_stuck and not self.current_piece.prelocked
+                and movement == Movement.DOWN
+            ):
+                self.current_piece.prelocked = True
+                self.scheduler.start(self.lock, self.lock_delay)
+            return False
+
+    def rotate(self, direction):
+        rotated_minoes_positions = tuple(
+            Coord(-direction*mino_position.y, direction*mino_position.x)
+            for mino_position in self.current_piece.minoes_positions
+        )
+        for rotation_point, liberty_degree in enumerate(
+            self.current_piece.SRS[direction][self.current_piece.orientation],
+            start = 1
+        ):
+            potential_position = self.current_piece.position + liberty_degree
+            if self.can_move(potential_position, rotated_minoes_positions):
+                if self.current_piece.prelocked:
+                    self.scheduler.restart(self.lock, self.lock_delay)
+                self.current_piece.position = potential_position
+                self.current_piece.minoes_positions = rotated_minoes_positions
+                self.current_piece.orientation = (
+                    (self.current_piece.orientation + direction) % 4
+                )
+                self.current_piece.last_rotation_point_used = rotation_point
+                self.move_ghost()
+                return True
+        else:
+            return False
+
+    def can_move(self, potential_position, minoes_positions):
+        return all(
+            self.cell_is_free(potential_position+mino_position)
+            for mino_position in minoes_positions
+        )
+
+    def cell_is_free(self, position):
+        return (
+            0 <= position.x < NB_COLS
+            and 0 <= position.y
+            and not self.matrix[position.y][position.x]
+        )
+
+    def add_to_score(self, ds):
+        self.score += ds
+        if self.score > self.high_score:
+            self.high_score = self.score
 
     def lock(self):
         if self.move(Movement.DOWN):
@@ -493,8 +495,7 @@ class Tetris():
             self.pressed_actions[-1]()
             if not self.auto_repeat:
                 self.auto_repeat = True
-                self.scheduler.stop(self.repeat_action)
-                self.scheduler.start(self.repeat_action, AUTOREPEAT_PERIOD)
+                self.scheduler.restart(self.repeat_action, AUTOREPEAT_PERIOD)
         else:
             self.stop_autorepeat()
 
