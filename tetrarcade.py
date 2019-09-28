@@ -35,7 +35,7 @@ TEXT_MARGIN = 40
 FONT_SIZE = 10
 HIGHLIGHT_TEXT_FONT_SIZE = 20
 TEXT_HEIGHT = 13.2
-TEXT = """SCORE
+STATS_TEXT = """SCORE
 HIGH SCORE
 TIME
 LEVEL
@@ -55,6 +55,19 @@ ROTATE           Z
 COUNTERCLOCKWISE
 HOLD             C
 PAUSE          ESC"""
+GAME_OVER_TEXT = """GAME
+OVER
+
+PRESS
+[ENTER]
+TO PLAY
+AGAIN"""
+PAUSE_TEXT = """PAUSE
+
+PRESS
+[ESC]
+TO
+RESUME"""
 
 # Sprites paths
 WINDOW_BG = "images/bg.jpg"
@@ -133,7 +146,7 @@ class TetrArcade(arcade.Window):
         self.matrix_sprite.alpha = MATRIX_SRITE_ALPHA
         self.on_resize(self.width, self.height)
         self.general_text = arcade.create_text(
-            text = TEXT,
+            text = STATS_TEXT,
             color = TEXT_COLOR,
             font_size = FONT_SIZE,
             font_name = FONT_NAME,
@@ -221,12 +234,6 @@ class TetrArcade(arcade.Window):
         self.load_current_piece()
 
     def pause(self, delta_time=0):
-        self.highlight_texts = ("""PAUSE
-
-PRESS
-[ESC]
-TO
-RESUME""",)
         self.game.status = Status.PAUSED
         self.stop_fall()
         self.cancel_prelock()
@@ -247,14 +254,6 @@ RESUME""",)
         self.cancel_prelock()
         self.stop_fall()
         arcade.unschedule(self.clock)
-        self.highlight_texts = ("""GAME
-OVER
-
-PRESS
-[ENTER]
-TO
-PLAY
-AGAIN""",)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -417,10 +416,14 @@ AGAIN""",)
                 font_name = FONT_NAME,
                 anchor_x = 'right'
             )
-
-        if self.highlight_texts:
+        highlight_text = {
+            Status.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
+            Status.PAUSED: PAUSE_TEXT,
+            Status.OVER: GAME_OVER_TEXT
+        }.get(self.game.status, "")
+        if highlight_text:
             arcade.draw_text(
-                text = self.highlight_texts[0],
+                text = highlight_text,
                 start_x = self.matrix_sprite.center_x,
                 start_y = self.matrix_sprite.center_y,
                 color = HIGHLIGHT_TEXT_COLOR,
