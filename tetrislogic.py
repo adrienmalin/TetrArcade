@@ -237,7 +237,7 @@ class TetrisLogic():
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
         self.show_text("LEVEL\n{:n}".format(self.level))
-        self.scheduler.start(self.drop, self.fall_delay)
+        self.scheduler.start(self.fall, self.fall_delay)
         self.new_current_piece()
 
     def new_current_piece(self):
@@ -276,21 +276,21 @@ class TetrisLogic():
             self.ghost_piece.position += Movement.DOWN
 
     def soft_drop(self):
-        if self.drop():
+        if self.move(Movement.DOWN):
             self.add_to_score(1)
             return True
         else:
             return False
 
     def hard_drop(self):
-        while self.move(Movement.DOWN, prelock_on_stuck=False):
+        while self.move(Movement.DOWN, prelock=False):
             self.add_to_score(2)
         self.lock()
 
-    def drop(self):
+    def fall(self):
         self.move(Movement.DOWN)
 
-    def move(self, movement, prelock_on_stuck=True):
+    def move(self, movement, prelock=True):
         potential_position = self.current_piece.position + movement
         if self.can_move(potential_position, self.current_piece.minoes_positions):
             if self.current_piece.prelocked:
@@ -301,7 +301,7 @@ class TetrisLogic():
             return True
         else:
             if (
-                prelock_on_stuck and not self.current_piece.prelocked
+                prelock and not self.current_piece.prelocked
                 and movement == Movement.DOWN
             ):
                 self.current_piece.prelocked = True
@@ -432,7 +432,7 @@ class TetrisLogic():
         self.add_to_score(lock_score)
 
         if self.goal <= 0:
-            self.scheduler.stop(self.drop)
+            self.scheduler.stop(self.fall)
             self.new_level()
         else:
             self.new_current_piece()
@@ -457,7 +457,7 @@ class TetrisLogic():
 
     def pause(self):
         self.state = State.PAUSED
-        self.scheduler.stop(self.drop)
+        self.scheduler.stop(self.fall)
         self.scheduler.stop(self.lock)
         self.scheduler.stop(self.update_time)
         self.pressed_actions = []
@@ -465,14 +465,14 @@ class TetrisLogic():
 
     def resume(self):
         self.state = State.PLAYING
-        self.scheduler.start(self.drop, self.fall_delay)
+        self.scheduler.start(self.fall, self.fall_delay)
         if self.current_piece.prelocked:
             self.scheduler.start(self.lock, self.lock_delay)
         self.scheduler.start(self.update_time, 1)
 
     def game_over(self):
         self.state = State.OVER
-        self.scheduler.stop(self.drop)
+        self.scheduler.stop(self.fall)
         self.scheduler.stop(self.update_time)
         self.scheduler.stop(self.repeat_action)
         self.save_high_score()
@@ -485,10 +485,7 @@ class TetrisLogic():
         if action in self.autorepeatable_actions:
             self.stop_autorepeat()
             self.pressed_actions.append(action)
-            if action == self.drop:
-                self.scheduler.start(self.repeat_action, AUTOREPEAT_PERIOD)
-            else:
-                self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
+            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
     def repeat_action(self):
         if self.pressed_actions:
