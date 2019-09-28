@@ -171,6 +171,7 @@ class TetrArcade(Tetris, arcade.Window):
             resizable = False,
             antialiasing = False
         )
+
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
         self.matrix_minoes_sprites = arcade.SpriteList()
         self.held_piece_sprites = arcade.SpriteList()
@@ -199,22 +200,19 @@ class TetrArcade(Tetris, arcade.Window):
         self.reload_next_pieces()
         self.reload_current_piece()
         self.reload_matrix()
+
+    def lock(self):
+        super().lock()
         if self.pressed_actions:
             self.stop_autorepeat()
             self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
-    def lock(self, _=0):
-        super().lock()
-        self.reload_matrix()
-        self.reload_next_pieces()
-        self.reload_current_piece()
-
-    def swap(self, _=0):
+    def swap(self):
         super().swap()
         self.reload_held_piece()
         self.reload_current_piece()
 
-    def pause(self, _=0):
+    def pause(self):
         super().pause()
         self.pressed_actions = []
         self.stop_autorepeat()
@@ -247,12 +245,8 @@ class TetrArcade(Tetris, arcade.Window):
                     self.pressed_actions.remove(action)
                 except ValueError:
                     pass
-                else:
-                    if not self.pressed_actions:
-                        self.stop_autorepeat()
-                        self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
-    def repeat_action(self, _=0):
+    def repeat_action(self):
         if self.pressed_actions:
             self.pressed_actions[-1]()
             if not self.auto_repeat:
@@ -260,8 +254,7 @@ class TetrArcade(Tetris, arcade.Window):
                 self.scheduler.stop(self.repeat_action)
                 self.scheduler.start(self.repeat_action, AUTOREPEAT_INTERVAL)
         else:
-            self.auto_repeat = False
-            self.scheduler.stop(self.repeat_action)
+            self.stop_autorepeat()
 
     def stop_autorepeat(self):
         self.auto_repeat = False
