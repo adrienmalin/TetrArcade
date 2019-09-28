@@ -34,7 +34,7 @@ HELD_PIECE_POSITION = Coord(-7, NB_LINES-3)
 HELD_I_POSITION = Coord(-7, NB_LINES-3)
 
 
-class Status:
+class State:
 
     STARTING = "starting"
     PLAYING  = "playing"
@@ -70,7 +70,7 @@ class AbstractScheduler:
     def stop(self, task):
         raise NotImplementedError
 
-    def restrart(self, task, period):
+    def restart(self, task, period):
         self.stop(task)
         self.start(task, period)
 
@@ -197,7 +197,7 @@ class TetrisLogic():
 
     def __init__(self):
         self.high_score = 0
-        self.status = Status.STARTING
+        self.state = State.STARTING
         self.matrix = []
         self.next_pieces = []
         self.current_piece = None
@@ -226,7 +226,7 @@ class TetrisLogic():
         self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
         self.current_piece = None
         self.held_piece = None
-        self.status = Status.PLAYING
+        self.state = State.PLAYING
         self.scheduler.start(self.update_time, 1)
         self.new_level()
 
@@ -237,7 +237,7 @@ class TetrisLogic():
             self.fall_delay = pow(0.8 - ((self.level-1)*0.007), self.level-1)
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
-        self.show_text("Level\n{:n}".format(self.level))
+        self.show_text("LEVEL\n{:n}".format(self.level))
         self.scheduler.start(self.drop, self.fall_delay)
         self.new_current_piece()
 
@@ -457,7 +457,7 @@ class TetrisLogic():
                 self.new_current_piece()
 
     def pause(self):
-        self.status = Status.PAUSED
+        self.state = State.PAUSED
         self.scheduler.stop(self.drop)
         self.scheduler.stop(self.lock)
         self.scheduler.stop(self.update_time)
@@ -465,14 +465,14 @@ class TetrisLogic():
         self.stop_autorepeat()
 
     def resume(self):
-        self.status = Status.PLAYING
+        self.state = State.PLAYING
         self.scheduler.start(self.drop, self.fall_delay)
         if self.current_piece.prelocked:
             self.scheduler.start(self.lock, self.lock_delay)
         self.scheduler.start(self.update_time, 1)
 
     def game_over(self):
-        self.status = Status.OVER
+        self.state = State.OVER
         self.scheduler.stop(self.drop)
         self.scheduler.stop(self.update_time)
         self.scheduler.stop(self.repeat_action)

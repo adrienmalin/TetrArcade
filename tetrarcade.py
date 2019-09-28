@@ -13,7 +13,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetrislogic import TetrisLogic, Status, AbstractScheduler
+from tetrislogic import TetrisLogic, State, AbstractScheduler
 
 
 # Constants
@@ -129,10 +129,10 @@ class TetrArcade(TetrisLogic, arcade.Window):
         locale.setlocale(locale.LC_ALL, '')
 
         self.KEY_MAP = {
-            Status.STARTING: {
+            State.STARTING: {
                 arcade.key.ENTER:     self.new_game
             },
-            Status.PLAYING: {
+            State.PLAYING: {
                 arcade.key.LEFT:      self.move_left,
                 arcade.key.NUM_4:     self.move_left,
                 arcade.key.RIGHT:     self.move_right,
@@ -155,11 +155,11 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 arcade.key.ESCAPE:    self.pause,
                 arcade.key.F1:        self.pause,
             },
-            Status.PAUSED: {
+            State.PAUSED: {
                 arcade.key.ESCAPE:    self.resume,
                 arcade.key.F1:        self.resume
             },
-            Status.OVER: {
+            State.OVER: {
                 arcade.key.ENTER:     self.new_game
             }
         }
@@ -216,7 +216,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
-                action = self.KEY_MAP[self.status][key_or_modifier]
+                action = self.KEY_MAP[self.state][key_or_modifier]
             except KeyError:
                 pass
             else:
@@ -224,7 +224,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     def on_key_release(self, key, modifiers):
         try:
-            action = self.KEY_MAP[self.status][key]
+            action = self.KEY_MAP[self.state][key]
         except KeyError:
             pass
         else:
@@ -291,7 +291,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
         arcade.start_render()
         self.bg_sprite.draw()
 
-        if self.status in (Status.PLAYING, Status.OVER):
+        if self.state in (State.PLAYING, State.OVER):
             self.matrix_sprite.draw()
             self.matrix_minoes_sprites.draw()
 
@@ -300,7 +300,11 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
             self.update_piece(self.current_piece, self.current_piece_sprites)
             if self.current_piece.prelocked:
-                alpha = PRELOCKED_ALPHA if self.current_piece.prelocked else NORMAL_ALPHA
+                alpha = (
+                    PRELOCKED_ALPHA
+                    if self.current_piece.prelocked
+                    else NORMAL_ALPHA
+                )
                 for mino_sprite in self.current_piece_sprites:
                     mino_sprite.alpha = alpha
             self.current_piece_sprites.draw()
@@ -350,11 +354,11 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 )
 
         highlight_text = {
-            Status.STARTING: START_TEXT,
-            Status.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
-            Status.PAUSED: PAUSE_TEXT,
-            Status.OVER: GAME_OVER_TEXT
-        }.get(self.status, "")
+            State.STARTING: START_TEXT,
+            State.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
+            State.PAUSED: PAUSE_TEXT,
+            State.OVER: GAME_OVER_TEXT
+        }.get(self.state, "")
         if highlight_text:
             arcade.draw_text(
                 text = highlight_text,
