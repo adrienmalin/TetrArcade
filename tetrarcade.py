@@ -32,33 +32,47 @@ TEXT_COLOR = arcade.color.BUBBLES
 HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
 TEXT_MARGIN = 40
-FONT_SIZE = 10
+FONT_SIZE = 16
+TEXT_HEIGHT = 20.8
 HIGHLIGHT_TEXT_FONT_SIZE = 20
-TEXT_HEIGHT = 13.2
-START_TEXT = """PRESS
-[ENTER]
-TO
-START"""
+START_TEXT = """TETRARCADE
+
+CONTROLS
+MOVE LEFT                 ←
+MOVE RIGHT                →
+SOFT DROP                 ↓
+HARD DROP             SPACE
+ROTATE CLOCKWISE          ↑
+ROTATE COUNTERCLOCKWISE   Z
+HOLD                      C
+PAUSE                   ESC
+
+PRESS [ENTER] TO START"""
 STATS_TEXT = """SCORE
+
 HIGH SCORE
-TIME
+
 LEVEL
+
 GOAL
+
 LINES
 
+TIME
+"""
+PAUSE_TEXT = """TETRARCADE
 
+CONTROLS
+MOVE LEFT                 ←
+MOVE RIGHT                →
+SOFT DROP                 ↓
+HARD DROP             SPACE
+ROTATE CLOCKWISE          ↑
+ROTATE COUNTERCLOCKWISE   Z
+HOLD                      C
+RESUME                  ESC
 
-
-MOVE LEFT        ←
-MOVE RIGHT       →
-SOFT DROP        ↓
-HARD DROP    SPACE
-ROTATE           ↑
-CLOCKWISE
-ROTATE           Z
-COUNTERCLOCKWISE
-HOLD             C
-PAUSE          ESC"""
+PRESS [ESC] TO RESUME"""
 GAME_OVER_TEXT = """GAME
 OVER
 
@@ -66,12 +80,6 @@ PRESS
 [ENTER]
 TO PLAY
 AGAIN"""
-PAUSE_TEXT = """PAUSE
-
-PRESS
-[ESC]
-TO
-RESUME"""
 
 # Sprites paths
 WINDOW_BG = "images/bg.jpg"
@@ -357,19 +365,21 @@ class TetrArcade(Tetris, arcade.Window):
             t = time.localtime(self.time)
             for y, text in enumerate(
                 (
+
+                    "{:02d}:{:02d}:{:02d}".format(
+                        t.tm_hour-1, t.tm_min, t.tm_sec
+                    ),
                     "{:n}".format(self.nb_lines),
                     "{:n}".format(self.goal),
                     "{:n}".format(self.level),
-                    "{:02d}:{:02d}:{:02d}".format(t.tm_hour-1, t.tm_min, t.tm_sec),
                     "{:n}".format(self.high_score),
                     "{:n}".format(self.score)
-                ),
-                start=14
+                )
             ):
                 arcade.draw_text(
                     text = text,
                     start_x = self.matrix_sprite.left - TEXT_MARGIN,
-                    start_y = self.matrix_sprite.bottom + y*TEXT_HEIGHT,
+                    start_y = self.matrix_sprite.bottom + 2*y*TEXT_HEIGHT,
                     color = TEXT_COLOR,
                     font_size = FONT_SIZE,
                     align = 'right',

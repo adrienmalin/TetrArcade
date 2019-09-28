@@ -29,27 +29,27 @@ NEXT_PIECES_POSITIONS = [
     for n in range(NB_NEXT_PIECES)
 ]
 HELD_PIECE_POSITION = Coord(-7, NB_LINES-3)
-HELD_I_POSITION = Coord(-5, NB_LINES-3)
+HELD_I_POSITION = Coord(-7, NB_LINES-3)
 
 
 class Status:
 
     STARTING = "starting"
-    PLAYING =  "playing"
-    PAUSED =   "paused"
-    OVER =     "over"
+    PLAYING  = "playing"
+    PAUSED   = "paused"
+    OVER     = "over"
 
 
 class Movement:
 
-    LEFT  = Coord(-1, 0)
-    RIGHT = Coord(1, 0)
-    DOWN  = Coord(0, -1)
+    LEFT  = Coord(-1,  0)
+    RIGHT = Coord( 1,  0)
+    DOWN  = Coord( 0, -1)
 
 
 class Rotation:
 
-    CLOCKWISE = -1
+    CLOCKWISE        = -1
     COUNTERCLOCKWISE = 1
 
 
