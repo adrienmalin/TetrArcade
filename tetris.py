@@ -10,6 +10,8 @@ NB_NEXT_PIECES = 5
 # Delays (seconds)
 LOCK_DELAY = 0.5
 FALL_DELAY = 1
+AUTOREPEAT_DELAY = 0.220    # Official : 0.300
+AUTOREPEAT_PERIOD = 0.010   # Official : 0.010
 
 
 class Coord:
@@ -197,6 +199,8 @@ class Tetris():
         self.current_piece = None
         self.held_piece = None
         self.time = 0
+        self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
+        self.pressed_actions = []
 
     def new_game(self):
         self.level = 0
@@ -204,6 +208,9 @@ class Tetris():
         self.nb_lines = 0
         self.goal = 0
         self.time = 0
+
+        self.pressed_actions = []
+        self.auto_repeat = False
 
         self.lock_delay = LOCK_DELAY
         self.fall_delay = FALL_DELAY
@@ -348,6 +355,9 @@ class Tetris():
 
         self.current_piece.prelocked = False
         self.scheduler.stop(self.lock)
+        if self.pressed_actions:
+            self.stop_autorepeat()
+            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
         if all(
             (mino_position + self.current_piece.position).y >= NB_LINES
@@ -459,14 +469,46 @@ class Tetris():
             self.scheduler.start(self.lock, self.lock_delay)
         self.scheduler.start(self.clock, 1)
 
-    def clock(self, delta_time=1):
-        self.time += delta_time
-
     def game_over(self):
         self.status = Status.OVER
         self.scheduler.stop(self.drop)
         self.scheduler.stop(self.clock)
+        self.scheduler.stop(self.repeat_action)
+
+    def clock(self, delta_time=1):
+        self.time += delta_time
+
+    def do_action(self, action):
+        action()
+        if action in self.autorepeatable_actions:
+            self.stop_autorepeat()
+            self.pressed_actions.append(action)
+            if action == self.drop:
+                self.scheduler.start(self.repeat_action, AUTOREPEAT_PERIOD)
+            else:
+                self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
+
+    def repeat_action(self):
+        if self.pressed_actions:
+            self.pressed_actions[-1]()
+            if not self.auto_repeat:
+                self.auto_repeat = True
+                self.scheduler.stop(self.repeat_action)
+                self.scheduler.start(self.repeat_action, AUTOREPEAT_PERIOD)
+        else:
+            self.stop_autorepeat()
+
+    def remove_action(self, action):
+        if action in self.autorepeatable_actions:
+            try:
+                self.pressed_actions.remove(action)
+            except ValueError:
+                pass
+
+    def stop_autorepeat(self):
+        self.auto_repeat = False
+        self.scheduler.stop(self.repeat_action)
 
     def show_text(self, text):
-        print(text)
+        raise NotImplementedError
 

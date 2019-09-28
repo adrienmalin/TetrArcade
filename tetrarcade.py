@@ -23,8 +23,6 @@ WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
 # Delays (seconds)
-AUTOREPEAT_DELAY = 0.220    # Official : 0.300
-AUTOREPEAT_INTERVAL = 0.010 # Official : 0.010
 HIGHLIGHT_TEXT_DISPLAY_DELAY = 1
 
 # Text
@@ -166,10 +164,8 @@ class TetrArcade(Tetris, arcade.Window):
                 arcade.key.ENTER:     self.new_game
             }
         }
-        self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
 
         self.highlight_texts = []
-        self.pressed_actions = []
 
         arcade.Window.__init__(
             self,
@@ -199,8 +195,6 @@ class TetrArcade(Tetris, arcade.Window):
 
     def new_game(self):
         self.highlight_texts = []
-        self.pressed_actions = []
-        self.auto_repeat = False
         super().new_game()
 
     def new_current_piece(self):
@@ -211,23 +205,14 @@ class TetrArcade(Tetris, arcade.Window):
 
     def lock(self):
         super().lock()
-        if self.pressed_actions:
-            self.stop_autorepeat()
-            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
     def swap(self):
         super().swap()
         self.reload_held_piece()
         self.reload_current_piece()
 
-    def pause(self):
-        super().pause()
-        self.pressed_actions = []
-        self.stop_autorepeat()
-
     def game_over(self):
         super().game_over()
-        self.scheduler.stop(self.repeat_action)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -236,11 +221,7 @@ class TetrArcade(Tetris, arcade.Window):
             except KeyError:
                 pass
             else:
-                action()
-                if action in self.autorepeatable_actions:
-                    self.stop_autorepeat()
-                    self.pressed_actions.append(action)
-                    self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
+                self.do_action(action)
 
     def on_key_release(self, key, modifiers):
         try:
@@ -248,27 +229,10 @@ class TetrArcade(Tetris, arcade.Window):
         except KeyError:
             pass
         else:
-            if action in self.autorepeatable_actions:
-                try:
-                    self.pressed_actions.remove(action)
-                except ValueError:
-                    pass
-
-    def repeat_action(self):
-        if self.pressed_actions:
-            self.pressed_actions[-1]()
-            if not self.auto_repeat:
-                self.auto_repeat = True
-                self.scheduler.stop(self.repeat_action)
-                self.scheduler.start(self.repeat_action, AUTOREPEAT_INTERVAL)
-        else:
-            self.stop_autorepeat()
-
-    def stop_autorepeat(self):
-        self.auto_repeat = False
-        self.scheduler.stop(self.repeat_action)
+            self.remove_action(action)
 
     def show_text(self, text):
+        self.scheduler.stop(self.del_highlight_text)
         self.highlight_texts.append(text)
         self.scheduler.start(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
