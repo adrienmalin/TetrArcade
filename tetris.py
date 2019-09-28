@@ -25,10 +25,10 @@ class Coord:
 # Piece init position
 MATRIX_PIECE_INIT_POSITION = Coord(4, NB_LINES)
 NEXT_PIECES_POSITIONS = [
-    Coord(NB_COLS+3, NB_LINES-4*n-3)
+    Coord(NB_COLS+6, NB_LINES-4*n-3)
     for n in range(NB_NEXT_PIECES)
 ]
-HELD_PIECE_POSITION = Coord(-4, NB_LINES-3)
+HELD_PIECE_POSITION = Coord(-7, NB_LINES-3)
 HELD_I_POSITION = Coord(-5, NB_LINES-3)
 
 
@@ -167,7 +167,17 @@ class Tetromino:
         return cls.random_bag.pop()()
 
 
+class Scheduler:
+
+    def start(task, period):
+        raise NotImplementedError
+
+    def stop(self, task):
+        raise NotImplementedError
+
+
 class Tetris():
+
 
     T_SLOT = (Coord(-1, 1), Coord(1, 1), Coord(1, -1), Coord(-1, -1))
     SCORES = (
@@ -177,6 +187,7 @@ class Tetris():
         {"name": "TRIPLE", T_Spin.NO_T_SPIN: 5, T_Spin.T_SPIN: 16},
         {"name": "TETRIS", T_Spin.NO_T_SPIN: 8}
     )
+    scheduler = Scheduler()
 
     def __init__(self):
         self.high_score = 0
@@ -205,7 +216,7 @@ class Tetris():
         self.current_piece = None
         self.held_piece = None
         self.status = Status.PLAYING
-        self.schedule(self.clock, 1)
+        self.scheduler.start(self.clock, 1)
         self.new_level()
 
     def new_level(self):
@@ -216,7 +227,7 @@ class Tetris():
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
         self.show_text("Level\n{:n}".format(self.level))
-        self.schedule(self.drop, self.fall_delay)
+        self.scheduler.start(self.drop, self.fall_delay)
         self.new_current_piece()
 
     def new_current_piece(self):
@@ -250,8 +261,8 @@ class Tetris():
         potential_position = self.current_piece.position + movement
         if self.can_move(potential_position, self.current_piece.minoes_positions):
             if self.current_piece.prelocked:
-                self.unschedule(self.lock)
-                self.schedule(self.lock, self.lock_delay)
+                self.scheduler.stop(self.lock)
+                self.scheduler.start(self.lock, self.lock_delay)
             self.current_piece.position = potential_position
             self.current_piece.last_rotation_point_used = None
             self.move_ghost()
@@ -262,13 +273,13 @@ class Tetris():
                 and movement == Movement.DOWN
             ):
                 self.current_piece.prelocked = True
-                self.schedule(self.lock, self.lock_delay)
+                self.scheduler.start(self.lock, self.lock_delay)
             return False
 
-    def move_left(self, delta_time=0):
+    def move_left(self):
         self.move(Movement.LEFT)
 
-    def move_right(self, delta_time=0):
+    def move_right(self):
         self.move(Movement.RIGHT)
 
     def rotate(self, direction):
@@ -283,8 +294,8 @@ class Tetris():
             potential_position = self.current_piece.position + liberty_degree
             if self.can_move(potential_position, rotated_minoes_positions):
                 if self.current_piece.prelocked:
-                    self.unschedule(self.lock)
-                    self.schedule(self.lock, self.lock_delay)
+                    self.scheduler.stop(self.lock)
+                    self.scheduler.start(self.lock, self.lock_delay)
                 self.current_piece.position = potential_position
                 self.current_piece.minoes_positions = rotated_minoes_positions
                 self.current_piece.orientation = (
@@ -296,10 +307,10 @@ class Tetris():
         else:
             return False
 
-    def rotate_counterclockwise(self, delta_time=0):
+    def rotate_counterclockwise(self):
         self.rotate(Rotation.COUNTERCLOCKWISE)
 
-    def rotate_clockwise(self, delta_time=0):
+    def rotate_clockwise(self):
         self.rotate(Rotation.CLOCKWISE)
 
     def move_ghost(self):
@@ -311,7 +322,7 @@ class Tetris():
         ):
             self.ghost_piece.position += Movement.DOWN
 
-    def drop(self, _=0):
+    def drop(self):
         self.move(Movement.DOWN)
 
     def add_to_score(self, ds):
@@ -335,14 +346,15 @@ class Tetris():
         if self.move(Movement.DOWN):
             return
 
+        self.current_piece.prelocked = False
+        self.scheduler.stop(self.lock)
+
         if all(
             (mino_position + self.current_piece.position).y >= NB_LINES
             for mino_position in self.current_piece.minoes_positions
         ):
             self.game_over()
             return
-
-        self.unschedule(self.lock)
 
         for mino_position in self.current_piece.minoes_positions:
             position = mino_position + self.current_piece.position
@@ -409,7 +421,7 @@ class Tetris():
         self.add_to_score(lock_score)
 
         if self.goal <= 0:
-            self.unschedule(self.drop)
+            self.scheduler.stop(self.drop)
             self.new_level()
         else:
             self.new_current_piece()
@@ -418,7 +430,7 @@ class Tetris():
         if self.current_piece.hold_enabled:
             self.current_piece.hold_enabled = False
             self.current_piece.prelocked = False
-            self.unschedule(self.lock)
+            self.scheduler.stop(self.lock)
             self.current_piece, self.held_piece = self.held_piece, self.current_piece
             if self.held_piece.__class__ == Tetromino.I:
                 self.held_piece.position = HELD_I_POSITION
@@ -432,35 +444,28 @@ class Tetris():
             else:
                 self.new_current_piece()
 
-    def pause(self, _=0):
+    def pause(self):
         self.status = Status.PAUSED
-        self.unschedule(self.drop)
-        self.unschedule(self.lock)
-        self.unschedule(self.clock)
+        self.scheduler.stop(self.drop)
+        self.scheduler.stop(self.lock)
+        self.scheduler.stop(self.clock)
         self.pressed_actions = []
         self.stop_autorepeat()
 
-    def resume(self, delta_time=0):
+    def resume(self):
         self.status = Status.PLAYING
-        self.schedule(self.drop, self.fall_delay)
+        self.scheduler.start(self.drop, self.fall_delay)
         if self.current_piece.prelocked:
-            self.schedule(self.lock, self.lock_delay)
-        self.schedule(self.clock, 1)
+            self.scheduler.start(self.lock, self.lock_delay)
+        self.scheduler.start(self.clock, 1)
 
     def clock(self, delta_time=1):
         self.time += delta_time
 
     def game_over(self):
         self.status = Status.OVER
-        self.unschedule(self.lock)
-        self.unschedule(self.drop)
-        self.unschedule(self.clock)
-
-    def schedule(task, period):
-        raise NotImplementedError
-
-    def unschedule(self, task):
-        raise NotImplementedError
+        self.scheduler.stop(self.drop)
+        self.scheduler.stop(self.clock)
 
     def show_text(self, text):
         print(text)

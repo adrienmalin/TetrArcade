@@ -13,7 +13,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetris import Tetris, Status
+from tetris import Tetris, Status, Scheduler
 
 
 # Constants
@@ -35,6 +35,10 @@ TEXT_MARGIN = 40
 FONT_SIZE = 10
 HIGHLIGHT_TEXT_FONT_SIZE = 20
 TEXT_HEIGHT = 13.2
+START_TEXT = """PRESS
+[ENTER]
+TO
+START"""
 STATS_TEXT = """SCORE
 HIGH SCORE
 TIME
@@ -89,7 +93,30 @@ GHOST_ALPHA = 50
 MATRIX_SRITE_ALPHA = 100
 
 
+class ArcadeScheduler(Scheduler):
+
+    def __init__(self):
+        self._tasks = {}
+
+    def start(self, task, period):
+        def _task(delta_time):
+            task()
+        self._tasks[task] = _task
+        arcade.schedule(_task, period)
+
+    def stop(self, task):
+        try:
+            _task = self._tasks[task]
+        except KeyError:
+            pass
+        else:
+            arcade.unschedule(_task)
+            del self._tasks[task]
+
+
 class TetrArcade(Tetris, arcade.Window):
+
+    scheduler = ArcadeScheduler()
 
     def __init__(self):
         super().__init__()
@@ -97,6 +124,9 @@ class TetrArcade(Tetris, arcade.Window):
         locale.setlocale(locale.LC_ALL, '')
 
         self.actions = {
+            Status.STARTING: {
+                arcade.key.ENTER:     self.new_game
+            },
             Status.PLAYING: {
                 arcade.key.LEFT:      self.move_left,
                 arcade.key.NUM_4:     self.move_left,
@@ -171,7 +201,7 @@ class TetrArcade(Tetris, arcade.Window):
         self.reload_matrix()
         if self.pressed_actions:
             self.stop_autorepeat()
-            arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
     def lock(self, _=0):
         super().lock()
@@ -191,7 +221,7 @@ class TetrArcade(Tetris, arcade.Window):
 
     def game_over(self):
         super().game_over()
-        self.unschedule(self.repeat_action)
+        self.scheduler.stop(self.repeat_action)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -204,7 +234,7 @@ class TetrArcade(Tetris, arcade.Window):
                 if action in self.autorepeatable_actions:
                     self.stop_autorepeat()
                     self.pressed_actions.append(action)
-                    arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+                    self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
     def on_key_release(self, key, modifiers):
         try:
@@ -220,31 +250,32 @@ class TetrArcade(Tetris, arcade.Window):
                 else:
                     if not self.pressed_actions:
                         self.stop_autorepeat()
-                        arcade.schedule(self.repeat_action, AUTOREPEAT_DELAY)
+                        self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
 
-    def repeat_action(self, delta_time=0):
+    def repeat_action(self, _=0):
         if self.pressed_actions:
             self.pressed_actions[-1]()
             if not self.auto_repeat:
                 self.auto_repeat = True
-                arcade.unschedule(self.repeat_action)
-                arcade.schedule(self.repeat_action, AUTOREPEAT_INTERVAL)
+                self.scheduler.stop(self.repeat_action)
+                self.scheduler.start(self.repeat_action, AUTOREPEAT_INTERVAL)
         else:
             self.auto_repeat = False
-            arcade.unschedule(self.repeat_action)
+            self.scheduler.stop(self.repeat_action)
 
     def stop_autorepeat(self):
         self.auto_repeat = False
-        self.unschedule(self.repeat_action)
+        self.scheduler.stop(self.repeat_action)
 
     def show_text(self, text):
         self.highlight_texts.append(text)
-        self.schedule(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
+        self.scheduler.start(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
-    def del_highlight_text(self, _=0):
-        self.highlight_texts.pop(0)
-        if not self.highlight_texts:
-            self.unschedule(self.del_highlight_text)
+    def del_highlight_text(self):
+        if self.highlight_texts:
+            self.highlight_texts.pop(0)
+        else:
+            self.scheduler.stop(self.del_highlight_text)
 
     def reload_piece(self, piece):
         piece_sprites = arcade.SpriteList()
@@ -296,8 +327,9 @@ class TetrArcade(Tetris, arcade.Window):
     def on_draw(self):
         arcade.start_render()
         self.bg_sprite.draw()
-        self.matrix_sprite.draw()
-        if not self.status == Status.PAUSED:
+
+        if self.status in (Status.PLAYING, Status.OVER):
+            self.matrix_sprite.draw()
             self.matrix_minoes_sprites.draw()
 
             self.update_piece(self.held_piece, self.held_piece_sprites)
@@ -324,34 +356,36 @@ class TetrArcade(Tetris, arcade.Window):
                     mino_sprite.bottom = self.matrix_sprite.bottom + mino_position.y*(mino_sprite.height-1)
             self.next_pieces_sprites.draw()
 
-        arcade.render_text(
-            self.general_text,
-            self.matrix_sprite.left - TEXT_MARGIN,
-            self.matrix_sprite.bottom
-        )
-        t = time.localtime(self.time)
-        for y, text in enumerate(
-            (
-                "{:n}".format(self.nb_lines),
-                "{:n}".format(self.goal),
-                "{:n}".format(self.level),
-                "{:02d}:{:02d}:{:02d}".format(t.tm_hour-1, t.tm_min, t.tm_sec),
-                "{:n}".format(self.high_score),
-                "{:n}".format(self.score)
-            ),
-            start=14
-        ):
-            arcade.draw_text(
-                text = text,
-                start_x = self.matrix_sprite.left - TEXT_MARGIN,
-                start_y = self.matrix_sprite.bottom + y*TEXT_HEIGHT,
-                color = TEXT_COLOR,
-                font_size = FONT_SIZE,
-                align = 'right',
-                font_name = FONT_NAME,
-                anchor_x = 'right'
+            arcade.render_text(
+                self.general_text,
+                self.matrix_sprite.left - TEXT_MARGIN,
+                self.matrix_sprite.bottom
             )
+            t = time.localtime(self.time)
+            for y, text in enumerate(
+                (
+                    "{:n}".format(self.nb_lines),
+                    "{:n}".format(self.goal),
+                    "{:n}".format(self.level),
+                    "{:02d}:{:02d}:{:02d}".format(t.tm_hour-1, t.tm_min, t.tm_sec),
+                    "{:n}".format(self.high_score),
+                    "{:n}".format(self.score)
+                ),
+                start=14
+            ):
+                arcade.draw_text(
+                    text = text,
+                    start_x = self.matrix_sprite.left - TEXT_MARGIN,
+                    start_y = self.matrix_sprite.bottom + y*TEXT_HEIGHT,
+                    color = TEXT_COLOR,
+                    font_size = FONT_SIZE,
+                    align = 'right',
+                    font_name = FONT_NAME,
+                    anchor_x = 'right'
+                )
+
         highlight_text = {
+            Status.STARTING: START_TEXT,
             Status.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
             Status.PAUSED: PAUSE_TEXT,
             Status.OVER: GAME_OVER_TEXT
@@ -380,16 +414,9 @@ class TetrArcade(Tetris, arcade.Window):
         self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.reload_matrix()
 
-    def schedule(self, task, period):
-        arcade.schedule(task, period)
-
-    def unschedule(self, task):
-        arcade.unschedule(task)
-
 
 def main():
-    tetrarcade = TetrArcade()
-    tetrarcade.new_game()
+    TetrArcade()
     arcade.run()
 
 if __name__ == "__main__":
