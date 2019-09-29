@@ -57,8 +57,8 @@ class Tetromino:
     class O(AbstractTetromino, metaclass=MetaTetromino):
 
         SRS = {
+            Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
             Rotation.COUNTER: (tuple(), tuple(), tuple(), tuple()),
-            Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple())
         }
         MINOES_COORDS = (Coord(0, 0), Coord(1, 0), Coord(0, 1), Coord(1, 1))
         MINOES_COLOR = "yellow"
@@ -70,18 +70,18 @@ class Tetromino:
     class I(AbstractTetromino, metaclass=MetaTetromino):
 
         SRS = {
-            Rotation.COUNTER: (
-                (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
-                (Coord(-1, 0), Coord(1, 0), Coord(-2, 0), Coord(1, 1), Coord(-2, -2)),
-                (Coord(0, 1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2)),
-                (Coord(1, 0), Coord(-1, 0), Coord(2, 0), Coord(-1, -1), Coord(2, 2))
-            ),
             Rotation.CLOCKWISE: (
                 (Coord(1, 0), Coord(-1, 0), Coord(2, 0), Coord(-1, -1), Coord(2, 2)),
                 (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
                 (Coord(-1, 0), Coord(1, 0), Coord(-2, 0), Coord(1, 1), Coord(-2, -2)),
-                (Coord(0, -1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2))
-            )
+                (Coord(0, -1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2)),
+            ),
+            Rotation.COUNTER: (
+                (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
+                (Coord(-1, 0), Coord(1, 0), Coord(-2, 0), Coord(1, 1), Coord(-2, -2)),
+                (Coord(0, 1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2)),
+                (Coord(1, 0), Coord(-1, 0), Coord(2, 0), Coord(-1, -1), Coord(2, 2)),
+            ),
         }
         MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(2, 0))
         MINOES_COLOR = "cyan"
