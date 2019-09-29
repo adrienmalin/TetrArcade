@@ -14,7 +14,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetrislogic import TetrisLogic, State, AbstractScheduler, NB_LINES
+from tetrislogic import TetrisLogic, State, NB_LINES
 
 
 # Constants
@@ -93,39 +93,7 @@ GHOST_ALPHA = 50
 MATRIX_SRITE_ALPHA = 100
 
 
-class ArcadeScheduler(AbstractScheduler):
-
-    def __init__(self):
-        self._tasks = {}
-
-    def start(self, task, period):
-        _task = lambda _: task()
-        self._tasks[task] = _task
-        arcade.schedule(_task, period)
-
-    def stop(self, task):
-        try:
-            _task = self._tasks[task]
-        except KeyError:
-            pass
-        else:
-            arcade.unschedule(_task)
-            del self._tasks[task]
-
-    def restart(self, task, period):
-        try:
-            _task = self._tasks[task]
-        except KeyError:
-            _task = lambda _: task()
-            self._tasks[task] = _task
-        else:
-            arcade.unschedule(_task)
-        arcade.schedule(_task, period)
-
-
 class TetrArcade(TetrisLogic, arcade.Window):
-
-    scheduler = ArcadeScheduler()
 
     def __init__(self):
         super().__init__()
@@ -203,6 +171,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
             anchor_x = 'right'
         )
 
+        self.tasks = {}
+
     def new_game(self):
         self.highlight_texts = []
         self.matrix_minoes_sprites = []
@@ -266,13 +236,13 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     def show_text(self, text):
         self.highlight_texts.append(text)
-        self.scheduler.restart(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
+        self.restart(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
     def del_highlight_text(self):
         if self.highlight_texts:
             self.highlight_texts.pop(0)
         else:
-            self.scheduler.stop(self.del_highlight_text)
+            self.stop(self.del_highlight_text)
 
     def reload_piece(self, piece):
         piece_sprites = arcade.SpriteList()
@@ -417,6 +387,30 @@ High score could not be saved:
 """.format(self.high_score)
                 + str(e)
             )
+
+    def start(self, task, period):
+        _task = lambda _: task()
+        self.tasks[task] = _task
+        arcade.schedule(_task, period)
+
+    def stop(self, task):
+        try:
+            _task = self.tasks[task]
+        except KeyError:
+            pass
+        else:
+            arcade.unschedule(_task)
+            del self.tasks[task]
+
+    def restart(self, task, period):
+        try:
+            _task = self.tasks[task]
+        except KeyError:
+            _task = lambda _: task()
+            self.tasks[task] = _task
+        else:
+            arcade.unschedule(_task)
+        arcade.schedule(_task, period)
 
 
 def main():

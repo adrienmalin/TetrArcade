@@ -61,19 +61,6 @@ class T_Spin:
     T_SPIN =      "T-SPIN"
 
 
-class AbstractScheduler:
-
-    def start(task, period):
-        raise Warning("AbstractScheduler.start is not implemented.")
-
-    def stop(self, task):
-        raise Warning("AbstractScheduler.stop is not implemented.")
-
-    def restart(self, task, period):
-        self.stop(task)
-        self.start(task, period)
-
-
 class Tetromino:
 
     random_bag = []
@@ -197,8 +184,6 @@ class Tetromino:
 
 class TetrisLogic():
 
-    scheduler = AbstractScheduler()
-
     def __init__(self):
         self.load_high_score()
         self.state = State.STARTING
@@ -241,7 +226,7 @@ class TetrisLogic():
         self.current_piece = None
         self.held_piece = None
         self.state = State.PLAYING
-        self.scheduler.start(self.update_time, 1)
+        self.start(self.update_time, 1)
         self.new_level()
 
     def new_level(self):
@@ -252,7 +237,7 @@ class TetrisLogic():
         if self.level > 15:
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
         self.show_text("LEVEL\n{:n}".format(self.level))
-        self.scheduler.restart(self.fall, self.fall_delay)
+        self.restart(self.fall, self.fall_delay)
         self.new_current_piece()
 
     def new_current_piece(self):
@@ -309,7 +294,7 @@ class TetrisLogic():
         potential_coord = self.current_piece.coord + movement
         if self.can_move(potential_coord, self.current_piece.minoes_coords):
             if self.current_piece.prelocked:
-                self.scheduler.restart(self.lock, self.lock_delay)
+                self.restart(self.lock, self.lock_delay)
             self.current_piece.coord = potential_coord
             if not movement == Movement.DOWN:
                 self.current_piece.last_rotation_point_used = None
@@ -321,7 +306,7 @@ class TetrisLogic():
                 and movement == Movement.DOWN
             ):
                 self.current_piece.prelocked = True
-                self.scheduler.start(self.lock, self.lock_delay)
+                self.start(self.lock, self.lock_delay)
             return False
 
     def rotate(self, direction):
@@ -336,7 +321,7 @@ class TetrisLogic():
             potential_coord = self.current_piece.coord + liberty_degree
             if self.can_move(potential_coord, rotated_minoes_coords):
                 if self.current_piece.prelocked:
-                    self.scheduler.restart(self.lock, self.lock_delay)
+                    self.restart(self.lock, self.lock_delay)
                 self.current_piece.coord = potential_coord
                 self.current_piece.minoes_coords = rotated_minoes_coords
                 self.current_piece.orientation = (
@@ -363,10 +348,10 @@ class TetrisLogic():
 
         # Start lock
         self.current_piece.prelocked = False
-        self.scheduler.stop(self.lock)
+        self.stop(self.lock)
         if self.pressed_actions:
             self.auto_repeat = False
-            self.scheduler.restart(self.repeat_action, AUTOREPEAT_DELAY)
+            self.restart(self.repeat_action, AUTOREPEAT_DELAY)
 
         # Game over
         if all(
@@ -483,7 +468,7 @@ class TetrisLogic():
         if self.current_piece.hold_enabled:
             self.current_piece.hold_enabled = False
             self.current_piece.prelocked = False
-            self.scheduler.stop(self.lock)
+            self.stop(self.lock)
             self.current_piece, self.held_piece = self.held_piece, self.current_piece
             if self.held_piece.__class__ == Tetromino.I:
                 self.held_piece.coord = HELD_I_COORD
@@ -499,25 +484,25 @@ class TetrisLogic():
 
     def pause(self):
         self.state = State.PAUSED
-        self.scheduler.stop(self.fall)
-        self.scheduler.stop(self.lock)
-        self.scheduler.stop(self.update_time)
+        self.stop(self.fall)
+        self.stop(self.lock)
+        self.stop(self.update_time)
         self.pressed_actions = []
         self.auto_repeat = False
-        self.scheduler.stop(self.repeat_action)
+        self.stop(self.repeat_action)
 
     def resume(self):
         self.state = State.PLAYING
-        self.scheduler.start(self.fall, self.fall_delay)
+        self.start(self.fall, self.fall_delay)
         if self.current_piece.prelocked:
-            self.scheduler.start(self.lock, self.lock_delay)
-        self.scheduler.start(self.update_time, 1)
+            self.start(self.lock, self.lock_delay)
+        self.start(self.update_time, 1)
 
     def game_over(self):
         self.state = State.OVER
-        self.scheduler.stop(self.fall)
-        self.scheduler.stop(self.update_time)
-        self.scheduler.stop(self.repeat_action)
+        self.stop(self.fall)
+        self.stop(self.update_time)
+        self.stop(self.repeat_action)
         self.save_high_score()
 
     def update_time(self):
@@ -528,17 +513,17 @@ class TetrisLogic():
         if action in self.autorepeatable_actions:
             self.auto_repeat = False
             self.pressed_actions.append(action)
-            self.scheduler.restart(self.repeat_action, AUTOREPEAT_DELAY)
+            self.restart(self.repeat_action, AUTOREPEAT_DELAY)
 
     def repeat_action(self):
         if self.pressed_actions:
             self.pressed_actions[-1]()
             if not self.auto_repeat:
                 self.auto_repeat = True
-                self.scheduler.restart(self.repeat_action, AUTOREPEAT_PERIOD)
+                self.restart(self.repeat_action, AUTOREPEAT_PERIOD)
         else:
             self.auto_repeat = False
-            self.scheduler.stop(self.repeat_action)
+            self.stop(self.repeat_action)
 
     def remove_action(self, action):
         if action in self.autorepeatable_actions:
@@ -564,4 +549,14 @@ High score is set to 0"""
             """TetrisLogic.save_high_score not implemented.
 High score is not saved"""
         )
+
+    def start(task, period):
+        raise Warning("TetrisLogic.start is not implemented.")
+
+    def stop(self, task):
+        raise Warning("TetrisLogic.stop is not implemented.")
+
+    def restart(self, task, period):
+        self.stop(task)
+        self.start(task, period)
 
