@@ -2,7 +2,7 @@
 from .utils import Coord, Movement, Rotation, T_Spin, Line
 from .tetromino import Tetromino
 from .consts import (
-    NB_LINES, NB_COLS, NB_NEXT_PIECES,
+    NB_LINES, NB_COLS, NB_NEXT,
     LOCK_DELAY, FALL_DELAY,
     AUTOREPEAT_DELAY, AUTOREPEAT_PERIOD,
     CURRENT_COORD, NEXT_COORDS, HELD_COORD, HELD_I_COORD
@@ -71,18 +71,17 @@ class TetrisLogic():
         self.matrix.clear()
         for y in range(NB_LINES+3):
             self.append_new_line_to_matrix()
-        self.load_next()
+        self.next = []
+        for n in range(NB_NEXT):
+            self.new_next()
         self.held = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
 
         self.new_level()
 
-    def load_next(self):
-        self.next = [
-            Tetromino()
-            for i in range(NB_NEXT_PIECES)
-        ]
+    def new_next(self):
+        self.next.append(Tetromino())
 
     def append_new_line_to_matrix(self):
         self.matrix.append(Line(None for x in range(NB_COLS)))
@@ -104,7 +103,7 @@ class TetrisLogic():
         self.current.coord = CURRENT_COORD
         self.ghost = self.current.ghost()
         self.move_ghost()
-        self.next.append(Tetromino())
+        self.new_next()
         self.next[-1].coord = NEXT_COORDS[-1]
         for tetromino, coord in zip (self.next, NEXT_COORDS):
             tetromino.coord = coord
@@ -138,11 +137,10 @@ class TetrisLogic():
             self.ghost.coord += Movement.DOWN
 
     def soft_drop(self):
-        if self.move(Movement.DOWN):
+        moved = self.move(Movement.DOWN)
+        if moved:
             self.score += 1
-            return True
-        else:
-            return False
+        return moved
 
     def hard_drop(self):
         while self.move(Movement.DOWN, prelock=False):

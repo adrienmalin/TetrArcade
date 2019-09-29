@@ -98,6 +98,52 @@ TO PLAY
 AGAIN"""
 
 
+class MinoSprites(arcade.SpriteList):
+
+    def __init__(self, matrix):
+        super().__init__()
+        self.matrix = matrix
+
+    def update_mino(self, mino, x, y, alpha):
+        mino.sprite.left = self.matrix.sprite.left + x*(mino.sprite.width-1)
+        mino.sprite.bottom = self.matrix.sprite.bottom + y*(mino.sprite.height-1)
+        mino.sprite.alpha = alpha
+
+
+class MatrixSprites(MinoSprites):
+
+    def __init__(self, matrix):
+        super().__init__(matrix)
+        for y, line in enumerate(matrix):
+            for x, mino in enumerate(line):
+                if mino:
+                    self.update_mino(mino, x, y, NORMAL_ALPHA)
+                    self.append(mino.sprite)
+
+
+class TetrominoSprites(MinoSprites):
+
+    def __init__(self, tetromino, matrix, alpha=NORMAL_ALPHA):
+        super().__init__(matrix)
+        self.tetromino = tetromino
+        path = MINOES_SPRITES_PATHS[tetromino.MINOES_COLOR]
+        self.alpha = alpha
+        for mino in tetromino:
+            mino.sprite = arcade.Sprite(path)
+            mino.sprite.alpha = alpha
+            self.append(mino.sprite)
+
+    def update(self):
+        alpha = (
+            PRELOCKED_ALPHA
+            if self.tetromino.prelocked
+            else self.alpha
+        )
+        for mino in self.tetromino:
+            coord = mino.coord + self.tetromino.coord
+            self.update_mino(mino, coord.x, coord.y, alpha)
+
+
 class TetrArcade(TetrisLogic, arcade.Window):
 
     def __init__(self):
@@ -154,8 +200,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.matrix.sprite.center_y = center_y
         self.matrix.sprite.left = int(self.matrix.sprite.left)
         self.matrix.sprite.top = int(self.matrix.sprite.top)
-        self.matrix.minoes_sprites = arcade.SpriteList()
-        self.tetrominos_sprites = arcade.SpriteList()
+        self.matrix.sprites = MatrixSprites(self.matrix)
         self.stats_text = arcade.create_text(
             text = STATS_TEXT,
             color = TEXT_COLOR,
@@ -177,55 +222,44 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     def new_game(self):
         self.highlight_texts = []
-        self.matrix.minoes_sprites = arcade.SpriteList()
+        self.matrix.sprites = MatrixSprites(self.matrix)
         super().new_game()
 
-    def load_next(self):
-        super().load_next()
-        for tetromino in self.next:
-            self.load_minoes(tetromino)
+    def new_next(self):
+        super().new_next()
+        self.next[-1].sprites = TetrominoSprites(self.next[-1], self.matrix)
 
     def new_current(self):
         super().new_current()
-        self.update_tetromino(self.current)
-        self.load_minoes(self.next[-1])
-        self.load_minoes(self.ghost, GHOST_ALPHA)
+        self.ghost.sprites = TetrominoSprites(self.ghost, self.matrix, GHOST_ALPHA)
         for tetromino in [self.current, self.ghost] + self.next:
-            self.update_tetromino(tetromino)
-            self.reload_all_tetrominoes()
+            tetromino.sprites.update()
 
     def move(self, movement, prelock=True):
         moved = super().move(movement, prelock)
         if moved or self.current.prelocked:
             for tetromino in (self.current, self.ghost):
-                self.update_tetromino(tetromino)
+                tetromino.sprites.update()
         return moved
 
     def rotate(self, rotation):
-        if super().rotate(rotation):
+        rotated = super().rotate(rotation)
+        if rotated:
             for tetromino in (self.current, self.ghost):
-                self.update_tetromino(tetromino)
-            return True
-        else:
-            return False
+                tetromino.sprites.update()
+        return rotated
 
     def swap(self):
         super().swap()
-        self.load_minoes(self.ghost, GHOST_ALPHA)
+        self.ghost.sprites = TetrominoSprites(self.ghost, self.matrix, GHOST_ALPHA)
         for tetromino in [self.held, self.current, self.ghost]:
             if tetromino:
-                self.update_tetromino(tetromino)
-        self.reload_all_tetrominoes()
+                tetromino.sprites.update()
 
     def lock(self):
-        self.update_tetromino(self.current)
+        self.current.sprites.update()
         super().lock()
-        self.matrix.minoes_sprites = arcade.SpriteList()
-        for y, line in enumerate(self.matrix):
-            for x, mino in enumerate(line):
-                if mino:
-                    self.update_mino(mino, x, y, NORMAL_ALPHA)
-                    self.matrix.minoes_sprites.append(mino.sprite)
+        self.matrix.sprites = MatrixSprites(self.matrix)
 
     def game_over(self):
         super().game_over()
@@ -240,12 +274,13 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 self.do_action(action)
 
     def on_key_release(self, key, modifiers):
-        try:
-            action = self.KEY_MAP[self.state][key]
-        except KeyError:
-            pass
-        else:
-            self.remove_action(action)
+        for key_or_modifier in (key, modifiers):
+            try:
+                action = self.KEY_MAP[self.state][key_or_modifier]
+            except KeyError:
+                pass
+            else:
+                self.remove_action(action)
 
     def show_text(self, text):
         self.highlight_texts.append(text)
@@ -263,8 +298,10 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
         if self.state in (State.PLAYING, State.OVER):
             self.matrix.sprite.draw()
-            self.matrix.minoes_sprites.draw()
-            self.tetrominoes_sprites.draw()
+            self.matrix.sprites.draw()
+            for tetromino in [self.held, self.current, self.ghost] + self.next:
+                if tetromino:
+                    tetromino.sprites.draw()
 
             arcade.render_text(
                 self.stats_text,
@@ -314,35 +351,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 anchor_x = 'center',
                 anchor_y = 'center'
             )
-
-    def load_minoes(self, tetromino, alpha=NORMAL_ALPHA):
-        path = MINOES_SPRITES_PATHS[tetromino.MINOES_COLOR]
-        tetromino.alpha = alpha
-        for mino in tetromino:
-            mino.sprite = arcade.Sprite(path)
-            mino.sprite.alpha = alpha
-
-    def reload_all_tetrominoes(self):
-        self.tetrominoes_sprites = arcade.SpriteList()
-        for tetromino in [self.held, self.current, self.ghost] + self.next:
-            if tetromino:
-                for mino in tetromino:
-                    self.tetrominoes_sprites.append(mino.sprite)
-
-    def update_tetromino(self, tetromino):
-        alpha = (
-            PRELOCKED_ALPHA
-            if tetromino.prelocked
-            else tetromino.alpha
-        )
-        for mino in tetromino:
-            coord = mino.coord + tetromino.coord
-            self.update_mino(mino, coord.x, coord.y, alpha)
-
-    def update_mino(self, mino, x, y, alpha):
-        mino.sprite.left = self.matrix.sprite.left + x*(mino.sprite.width-1)
-        mino.sprite.bottom = self.matrix.sprite.bottom + y*(mino.sprite.height-1)
-        mino.sprite.alpha = alpha
 
     def load_high_score(self):
         try:

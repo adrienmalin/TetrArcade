@@ -5,7 +5,7 @@ from .utils import Coord
 # Matrix
 NB_LINES = 20
 NB_COLS = 10
-NB_NEXT_PIECES = 5
+NB_NEXT = 5
 
 # Delays (seconds)
 LOCK_DELAY = 0.5
@@ -18,7 +18,7 @@ AUTOREPEAT_PERIOD = 0.010   # Official : 0.010
 CURRENT_COORD = Coord(4, NB_LINES)
 NEXT_COORDS = [
     Coord(NB_COLS+6, NB_LINES-4*n-3)
-    for n in range(NB_NEXT_PIECES)
+    for n in range(NB_NEXT)
 ]
 HELD_COORD = Coord(-7, NB_LINES-3)
 HELD_I_COORD = Coord(-7, NB_LINES-3)
