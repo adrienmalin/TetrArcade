@@ -258,7 +258,7 @@ class TetrisLogic():
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
                 nb_lines_cleared += 1
-                self.remove_line_of_matrix(y)
+                self.matrix.pop(y)
                 self.append_new_line_to_matrix()
         if nb_lines_cleared:
             self.nb_lines_cleared += nb_lines_cleared
@@ -294,9 +294,6 @@ class TetrisLogic():
             self.new_level()
         else:
             self.new_current()
-
-    def remove_line_of_matrix(self, line):
-        self.matrix.pop(line)
 
     def can_move(self, potential_coord, minoes_coords):
         return all(
