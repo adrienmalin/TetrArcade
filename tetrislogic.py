@@ -117,6 +117,12 @@ class Tetromino:
         def ghost(self):
             return self.__class__()
 
+        def minoes_absolute_coord(self):
+            return [
+                mino_coord + self.coord
+                for mino_coord in self.minoes_coords
+            ]
+
 
     class O(AbstractTetromino, metaclass=MetaTetromino):
 
@@ -203,6 +209,17 @@ class TetrisLogic():
         self.time = 0
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
         self.pressed_actions = []
+        self._score = 0
+
+    @property
+    def score(self):
+        return self._score
+
+    @score.setter
+    def score(self, new_score):
+        self._score = new_score
+        if self._score > self.high_score:
+            self.high_score = self._score
 
     def new_game(self):
         self.level = 0
@@ -275,14 +292,14 @@ class TetrisLogic():
 
     def soft_drop(self):
         if self.move(Movement.DOWN):
-            self.add_to_score(1)
+            self.score += 1
             return True
         else:
             return False
 
     def hard_drop(self):
         while self.move(Movement.DOWN, prelock=False):
-            self.add_to_score(2)
+            self.score += 2
         self.lock()
 
     def fall(self):
@@ -417,7 +434,7 @@ class TetrisLogic():
             lock_score += ds
             self.show_text("COMBO x{:n}\n{:n}".format(self.combo, ds))
 
-        self.add_to_score(lock_score)
+        self.score += lock_score
 
         if self.goal <= 0:
             self.new_level()
@@ -429,7 +446,6 @@ class TetrisLogic():
             coord = mino_coord + self.current_piece.coord
             if coord.y <= NB_LINES+3:
                 self.matrix[coord.y][coord.x] = self.current_piece.MINOES_COLOR
-
 
     def append_new_line_to_matrix(self):
         self.matrix.append([None for x in range(NB_COLS)])
@@ -462,11 +478,6 @@ class TetrisLogic():
             (self.current_piece.orientation + n) % 4
         ]
         return not self.cell_is_free(t_slot_coord)
-
-    def add_to_score(self, delta_score):
-        self.score += delta_score
-        if self.score > self.high_score:
-            self.high_score = self.score
 
     def swap(self):
         if self.current_piece.hold_enabled:
@@ -548,6 +559,7 @@ High score is set to 0"""
         )
 
     def save_high_score(self):
+        print("High score: {:n}".format(self.high_score))
         raise Warning(
             """TetrisLogic.save_high_score not implemented.
 High score is not saved"""
