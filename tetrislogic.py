@@ -76,8 +76,18 @@ class AbstractScheduler:
 
 class Tetromino:
 
+    random_bag = []
+
+
+    class MetaTetromino(type):
+
+        def __init__(cls, name, bases, dico):
+            super().__init__(name, bases, dico)
+            cls.classes.append(cls)
+
 
     class AbstractTetromino:
+
         # Super rotation system
         SRS = {
             Rotation.COUNTERCLOCKWISE: (
@@ -94,6 +104,7 @@ class Tetromino:
             )
         }
         CAN_SPIN = False
+        classes = []
 
         def __init__(self):
             self.coord = NEXT_PIECES_COORDS[-1]
@@ -107,7 +118,7 @@ class Tetromino:
             return self.__class__()
 
 
-    class O(AbstractTetromino):
+    class O(AbstractTetromino, metaclass=MetaTetromino):
 
         SRS = {
             Rotation.COUNTERCLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
@@ -120,7 +131,7 @@ class Tetromino:
             return False
 
 
-    class I(AbstractTetromino):
+    class I(AbstractTetromino, metaclass=MetaTetromino):
 
         SRS = {
             Rotation.COUNTERCLOCKWISE: (
@@ -140,43 +151,40 @@ class Tetromino:
         MINOES_COLOR = "cyan"
 
 
-    class T(AbstractTetromino):
+    class T(AbstractTetromino, metaclass=MetaTetromino):
 
         MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
         MINOES_COLOR = "magenta"
         CAN_SPIN = True
 
 
-    class L(AbstractTetromino):
+    class L(AbstractTetromino, metaclass=MetaTetromino):
 
         MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
         MINOES_COLOR = "orange"
 
 
-    class J(AbstractTetromino):
+    class J(AbstractTetromino, metaclass=MetaTetromino):
 
         MINOES_COORDS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "blue"
 
 
-    class S(AbstractTetromino):
+    class S(AbstractTetromino, metaclass=MetaTetromino):
 
         MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
         MINOES_COLOR = "green"
 
 
-    class Z(AbstractTetromino):
+    class Z(AbstractTetromino, metaclass=MetaTetromino):
 
         MINOES_COORDS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
         MINOES_COLOR = "red"
 
 
-    TETROMINOES = (O, I, T, L, J, S, Z)
-    random_bag = []
-
     def __new__(cls):
         if not cls.random_bag:
-            cls.random_bag = list(cls.TETROMINOES)
+            cls.random_bag = list(Tetromino.AbstractTetromino.classes)
             random.shuffle(cls.random_bag)
         return cls.random_bag.pop()()
 
@@ -209,10 +217,9 @@ class TetrisLogic():
         self.lock_delay = LOCK_DELAY
         self.fall_delay = FALL_DELAY
 
-        self.matrix = [
-            [None for x in range(NB_COLS)]
-            for y in range(NB_LINES+3)
-        ]
+        self.matrix = []
+        for y in range(NB_LINES+3):
+            self.append_new_line_to_matrix()
         self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
         self.current_piece = None
         self.held_piece = None
@@ -341,8 +348,8 @@ class TetrisLogic():
         self.current_piece.prelocked = False
         self.scheduler.stop(self.lock)
         if self.pressed_actions:
-            self.stop_autorepeat()
-            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
+            self.auto_repeat = False
+            self.scheduler.restart(self.repeat_action, AUTOREPEAT_DELAY)
 
         # Game over
         if all(
@@ -352,19 +359,15 @@ class TetrisLogic():
             self.game_over()
             return
 
-        # Insert tetromino in the matrix
-        for mino_coord in self.current_piece.minoes_coords:
-            coord = mino_coord + self.current_piece.coord
-            if coord.y <= NB_LINES+3:
-                self.matrix[coord.y][coord.x] = self.current_piece.MINOES_COLOR
+        self.enter_the_matrix()
 
         # Clear complete lines
         nb_lines_cleared = 0
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
                 nb_lines_cleared += 1
-                self.matrix.pop(y)
-                self.matrix.append([None for x in range(NB_COLS)])
+                self.remove_line_of_matrix(y)
+                self.append_new_line_to_matrix()
         if nb_lines_cleared:
             self.nb_lines += nb_lines_cleared
 
@@ -423,6 +426,19 @@ class TetrisLogic():
         else:
             self.new_current_piece()
 
+    def enter_the_matrix(self):
+        for mino_coord in self.current_piece.minoes_coords:
+            coord = mino_coord + self.current_piece.coord
+            if coord.y <= NB_LINES+3:
+                self.matrix[coord.y][coord.x] = self.current_piece.MINOES_COLOR
+
+
+    def append_new_line_to_matrix(self):
+        self.matrix.append([None for x in range(NB_COLS)])
+
+    def remove_line_of_matrix(self, line):
+        self.matrix.pop(line)
+
     def can_move(self, potential_coord, minoes_coords):
         return all(
             self.cell_is_free(potential_coord+mino_coord)
@@ -478,7 +494,8 @@ class TetrisLogic():
         self.scheduler.stop(self.lock)
         self.scheduler.stop(self.update_time)
         self.pressed_actions = []
-        self.stop_autorepeat()
+        self.auto_repeat = False
+        self.scheduler.stop(self.repeat_action)
 
     def resume(self):
         self.state = State.PLAYING
@@ -494,15 +511,15 @@ class TetrisLogic():
         self.scheduler.stop(self.repeat_action)
         self.save_high_score()
 
-    def update_time(self, delta_time=1):
-        self.time += delta_time
+    def update_time(self):
+        self.time += 1
 
     def do_action(self, action):
         action()
         if action in self.autorepeatable_actions:
-            self.stop_autorepeat()
+            self.auto_repeat = False
             self.pressed_actions.append(action)
-            self.scheduler.start(self.repeat_action, AUTOREPEAT_DELAY)
+            self.scheduler.restart(self.repeat_action, AUTOREPEAT_DELAY)
 
     def repeat_action(self):
         if self.pressed_actions:
@@ -511,7 +528,8 @@ class TetrisLogic():
                 self.auto_repeat = True
                 self.scheduler.restart(self.repeat_action, AUTOREPEAT_PERIOD)
         else:
-            self.stop_autorepeat()
+            self.auto_repeat = False
+            self.scheduler.stop(self.repeat_action)
 
     def remove_action(self, action):
         if action in self.autorepeatable_actions:
@@ -519,10 +537,6 @@ class TetrisLogic():
                 self.pressed_actions.remove(action)
             except ValueError:
                 pass
-
-    def stop_autorepeat(self):
-        self.auto_repeat = False
-        self.scheduler.stop(self.repeat_action)
 
     def show_text(self, text):
         print(text)

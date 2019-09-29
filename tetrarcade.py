@@ -3,6 +3,7 @@ import sys
 import locale
 import time
 import os
+import itertools
 
 try:
     import arcade
@@ -14,7 +15,7 @@ python -m pip install --user arcade
 """
 )
 
-from tetrislogic import TetrisLogic, State, AbstractScheduler
+from tetrislogic import TetrisLogic, State, AbstractScheduler, NB_LINES
 
 
 # Constants
@@ -34,19 +35,19 @@ TEXT_MARGIN = 40
 FONT_SIZE = 16
 TEXT_HEIGHT = 20.8
 HIGHLIGHT_TEXT_FONT_SIZE = 20
-START_TEXT = """TETRARCADE
+TITLE_AND_CONTROL_TEXT = """TETRARCADE
 
 CONTROLS
-MOVE LEFT                 ←
-MOVE RIGHT                →
-SOFT DROP                 ↓
-HARD DROP             SPACE
-ROTATE CLOCKWISE          ↑
-ROTATE COUNTERCLOCKWISE   Z
-HOLD                      C
-PAUSE                   ESC
-
-PRESS [ENTER] TO START"""
+MOVE LEFT            ←
+MOVE RIGHT           →
+SOFT DROP            ↓
+HARD DROP        SPACE
+ROTATE CLOCKWISE     ↑
+ROTATE COUNTER       Z
+HOLD                 C
+PAUSE              ESC"""
+START_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ENTER] TO START"
+PAUSE_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ESC] TO RESUME"
 STATS_TEXT = """SCORE
 
 HIGH SCORE
@@ -59,19 +60,6 @@ LINES
 
 TIME
 """
-PAUSE_TEXT = """TETRARCADE
-
-CONTROLS
-MOVE LEFT                 ←
-MOVE RIGHT                →
-SOFT DROP                 ↓
-HARD DROP             SPACE
-ROTATE CLOCKWISE          ↑
-ROTATE COUNTERCLOCKWISE   Z
-HOLD                      C
-RESUME                  ESC
-
-PRESS [ESC] TO RESUME"""
 GAME_OVER_TEXT = """GAME
 OVER
 
@@ -124,6 +112,16 @@ class ArcadeScheduler(AbstractScheduler):
         else:
             arcade.unschedule(_task)
             del self._tasks[task]
+
+    def restart(self, task, period):
+        try:
+            _task = self._tasks[task]
+        except KeyError:
+            _task = lambda _: task()
+            self._tasks[task] = _task
+        else:
+            arcade.unschedule(_task)
+        arcade.schedule(_task, period)
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
@@ -182,15 +180,22 @@ class TetrArcade(TetrisLogic, arcade.Window):
             antialiasing = False
         )
 
+        center_x = self.width / 2
+        center_y = self.height / 2
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
-        self.matrix_minoes_sprites = arcade.SpriteList()
+        self.bg_sprite.center_x = center_x
+        self.bg_sprite.center_y = center_y
+        self.matrix_minoes_sprites = []
         self.held_piece_sprites = arcade.SpriteList()
         self.current_piece_sprites = arcade.SpriteList()
         self.ghost_piece_sprites = arcade.SpriteList()
         self.next_pieces_sprites = arcade.SpriteList()
         self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_sprite.alpha = MATRIX_SRITE_ALPHA
-        self.on_resize(self.width, self.height)
+        self.matrix_sprite.center_x = center_x
+        self.matrix_sprite.center_y = center_y
+        self.matrix_sprite.left = int(self.matrix_sprite.left)
+        self.matrix_sprite.top = int(self.matrix_sprite.top)
         self.general_text = arcade.create_text(
             text = STATS_TEXT,
             color = TEXT_COLOR,
@@ -201,16 +206,39 @@ class TetrArcade(TetrisLogic, arcade.Window):
 
     def new_game(self):
         self.highlight_texts = []
+        self.matrix_minoes_sprites = []
         super().new_game()
 
     def new_current_piece(self):
         super().new_current_piece()
         self.reload_next_pieces()
         self.reload_current_piece()
-        self.reload_matrix()
 
     def lock(self):
         super().lock()
+
+    def enter_the_matrix(self):
+        super().enter_the_matrix()
+        self.update_current_piece()
+        for mino_coord, mino_sprite in zip(
+            self.current_piece.minoes_coords,
+            self.current_piece_sprites
+        ):
+            mino_coord += self.current_piece.coord
+            self.matrix_minoes_sprites[
+                mino_coord.y
+            ].append(mino_sprite)
+
+    def append_new_line_to_matrix(self):
+        super().append_new_line_to_matrix()
+        self.matrix_minoes_sprites.append(arcade.SpriteList())
+
+    def remove_line_of_matrix(self, line):
+        super().remove_line_of_matrix(line)
+        self.matrix_minoes_sprites.pop(line)
+        for line_sprites in self.matrix_minoes_sprites[line:NB_LINES+2]:
+            for mino_sprite in line_sprites:
+                mino_sprite.center_y -= mino_sprite.height-1
 
     def swap(self):
         super().swap()
@@ -272,19 +300,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.current_piece_sprites = self.reload_piece(self.current_piece)
         self.ghost_piece_sprites = self.reload_piece(self.ghost_piece)
 
-    def reload_matrix(self):
-        if self.matrix:
-            self.matrix_minoes_sprites = arcade.SpriteList()
-            for y, line in enumerate(self.matrix):
-                for x, mino_color in enumerate(line):
-                    if mino_color:
-                        mino_sprite_path = MINOES_SPRITES_PATHS[mino_color]
-                        mino_sprite = arcade.Sprite(mino_sprite_path)
-                        mino_sprite.left = self.matrix_sprite.left + x*(mino_sprite.width-1)
-                        mino_sprite.bottom = self.matrix_sprite.bottom + y*(mino_sprite.height-1)
-                        mino_sprite.alpha = 200
-                        self.matrix_minoes_sprites.append(mino_sprite)
-
     def update_piece(self, piece, piece_sprites):
         if piece:
             for mino_sprite, mino_coord in zip(
@@ -294,26 +309,30 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 mino_sprite.left = self.matrix_sprite.left + mino_coord.x*(mino_sprite.width-1)
                 mino_sprite.bottom = self.matrix_sprite.bottom + mino_coord.y*(mino_sprite.height-1)
 
+    def update_current_piece(self):
+        self.update_piece(self.current_piece, self.current_piece_sprites)
+        if self.current_piece.prelocked:
+            alpha = (
+                PRELOCKED_ALPHA
+                if self.current_piece.prelocked
+                else NORMAL_ALPHA
+            )
+            for mino_sprite in self.current_piece_sprites:
+                mino_sprite.alpha = alpha
+
     def on_draw(self):
         arcade.start_render()
         self.bg_sprite.draw()
 
         if self.state in (State.PLAYING, State.OVER):
             self.matrix_sprite.draw()
-            self.matrix_minoes_sprites.draw()
+            for line in self.matrix_minoes_sprites:
+                line.draw()
 
             self.update_piece(self.held_piece, self.held_piece_sprites)
             self.held_piece_sprites.draw()
 
-            self.update_piece(self.current_piece, self.current_piece_sprites)
-            if self.current_piece.prelocked:
-                alpha = (
-                    PRELOCKED_ALPHA
-                    if self.current_piece.prelocked
-                    else NORMAL_ALPHA
-                )
-                for mino_sprite in self.current_piece_sprites:
-                    mino_sprite.alpha = alpha
+            self.update_current_piece()
             self.current_piece_sprites.draw()
 
             self.update_piece(self.ghost_piece, self.ghost_piece_sprites)
@@ -378,17 +397,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 anchor_x = 'center',
                 anchor_y = 'center'
             )
-
-    def on_resize(self, width, height):
-        center_x = self.width / 2
-        center_y = self.height / 2
-        self.bg_sprite.center_x = center_x
-        self.bg_sprite.center_y = center_y
-        self.matrix_sprite.center_x = center_x
-        self.matrix_sprite.center_y = center_y
-        self.matrix_sprite.left = int(self.matrix_sprite.left)
-        self.matrix_sprite.top = int(self.matrix_sprite.top)
-        self.reload_matrix()
 
     def load_high_score(self):
         try:
