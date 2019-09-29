@@ -3,7 +3,6 @@ import sys
 import locale
 import time
 import os
-import itertools
 
 try:
     import arcade

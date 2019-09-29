@@ -409,15 +409,13 @@ class TetrisLogic():
             ds *= 100 * self.level
             lock_score += ds
             lock_strings.append(str(ds))
+            self.show_text("\n".join(lock_strings))
+
 
         if self.combo >= 1:
-            lock_strings.append("COMBO x%d" % self.combo)
             ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level
             lock_score += ds
-            lock_strings.append(str(ds))
-
-        if lock_strings:
-            self.show_text("\n".join(lock_strings))
+            self.show_text("COMBO x{:n}\n{:n}".format(self.combo, ds))
 
         self.add_to_score(lock_score)
 
