@@ -9,7 +9,7 @@ NB_NEXT_PIECES = 5
 # Delays (seconds)
 LOCK_DELAY = 0.5
 FALL_DELAY = 1
-AUTOREPEAT_DELAY = 0.220    # Official : 0.300
+AUTOREPEAT_DELAY = 0.200    # Official : 0.300
 AUTOREPEAT_PERIOD = 0.010   # Official : 0.010
 
 
@@ -222,12 +222,15 @@ class TetrisLogic():
         self.matrix = []
         for y in range(NB_LINES+3):
             self.append_new_line_to_matrix()
-        self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
+        self.new_next_pieces()
         self.current_piece = None
         self.held_piece = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
         self.new_level()
+
+    def new_next_pieces(self):
+        self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
 
     def new_level(self):
         self.level += 1

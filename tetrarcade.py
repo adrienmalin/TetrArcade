@@ -24,7 +24,7 @@ WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 
 # Delays (seconds)
-HIGHLIGHT_TEXT_DISPLAY_DELAY = 1
+HIGHLIGHT_TEXT_DISPLAY_DELAY = 0.8
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
@@ -37,14 +37,14 @@ HIGHLIGHT_TEXT_FONT_SIZE = 20
 TITLE_AND_CONTROL_TEXT = """TETRARCADE
 
 CONTROLS
-MOVE LEFT            ←
-MOVE RIGHT           →
-SOFT DROP            ↓
-HARD DROP        SPACE
-ROTATE CLOCKWISE     ↑
-ROTATE COUNTER       Z
-HOLD                 C
-PAUSE              ESC"""
+MOVE LEFT         ←
+MOVE RIGHT        →
+SOFT DROP         ↓
+HARD DROP     SPACE
+ROTATE CLOCKWISE  ↑
+ROTATE COUNTER    Z
+HOLD              C
+PAUSE           ESC"""
 START_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ENTER] TO START"
 PAUSE_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ESC] TO RESUME"
 STATS_TEXT = """SCORE
@@ -90,7 +90,41 @@ HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
 NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 127
 GHOST_ALPHA = 50
-MATRIX_SRITE_ALPHA = 100
+MATRIX_SPRITE_ALPHA = 100
+
+
+class TetrominoSprites(arcade.SpriteList):
+
+    def __init__(self, piece=None, matrix_sprite=None, alpha=NORMAL_ALPHA):
+        super().__init__()
+        self.piece = piece
+        self.alpha = alpha
+        self.matrix_sprite = matrix_sprite
+        if piece:
+            for mino_coord in piece.minoes_coords:
+                mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
+                mino_sprite = arcade.Sprite(mino_sprite_path)
+                mino_sprite.alpha = alpha
+                self.append(mino_sprite)
+
+    def update(self):
+        if self.piece:
+            alpha = (
+                PRELOCKED_ALPHA
+                if self.piece.prelocked
+                else self.alpha
+            )
+            for mino_sprite, mino_coord in zip(
+                self, self.piece.minoes_coords
+            ):
+                mino_coord += self.piece.coord
+                mino_sprite.left = self.matrix_sprite.left + mino_coord.x*(mino_sprite.width-1)
+                mino_sprite.bottom = self.matrix_sprite.bottom + mino_coord.y*(mino_sprite.height-1)
+                mino_sprite.alpha = alpha
+
+    def draw(self):
+        self.update()
+        super().draw()
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
@@ -152,17 +186,17 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.bg_sprite = arcade.Sprite(WINDOW_BG)
         self.bg_sprite.center_x = center_x
         self.bg_sprite.center_y = center_y
-        self.matrix_minoes_sprites = []
-        self.held_piece_sprites = arcade.SpriteList()
-        self.current_piece_sprites = arcade.SpriteList()
-        self.ghost_piece_sprites = arcade.SpriteList()
-        self.next_pieces_sprites = arcade.SpriteList()
         self.matrix_sprite = arcade.Sprite(MATRIX_SPRITE_PATH)
-        self.matrix_sprite.alpha = MATRIX_SRITE_ALPHA
+        self.matrix_sprite.alpha = MATRIX_SPRITE_ALPHA
         self.matrix_sprite.center_x = center_x
         self.matrix_sprite.center_y = center_y
         self.matrix_sprite.left = int(self.matrix_sprite.left)
         self.matrix_sprite.top = int(self.matrix_sprite.top)
+        self.matrix_minoes_sprites = []
+        self.held_piece_sprites = TetrominoSprites()
+        self.current_piece_sprites = TetrominoSprites()
+        self.ghost_piece_sprites = TetrominoSprites()
+        self.next_pieces_sprites = []
         self.general_text = arcade.create_text(
             text = STATS_TEXT,
             color = TEXT_COLOR,
@@ -172,23 +206,30 @@ class TetrArcade(TetrisLogic, arcade.Window):
         )
 
         self.tasks = {}
+        self.new_game()
 
     def new_game(self):
         self.highlight_texts = []
         self.matrix_minoes_sprites = []
         super().new_game()
+        self.on_draw()
+
+    def new_next_pieces(self):
+        super().new_next_pieces()
+        self.next_pieces_sprites = [
+            TetrominoSprites(next_piece, self.matrix_sprite)
+            for next_piece in self.next_pieces
+        ]
 
     def new_current_piece(self):
         super().new_current_piece()
-        self.reload_next_pieces()
-        self.reload_current_piece()
-
-    def lock(self):
-        super().lock()
+        self.current_piece_sprites = self.next_pieces_sprites.pop(0)
+        self.next_pieces_sprites.append(TetrominoSprites(self.next_pieces[-1], self.matrix_sprite))
+        self.ghost_piece_sprites = TetrominoSprites(self.ghost_piece, self.matrix_sprite, GHOST_ALPHA)
 
     def enter_the_matrix(self):
         super().enter_the_matrix()
-        self.update_current_piece()
+        self.current_piece_sprites.update()
         for mino_coord, mino_sprite in zip(
             self.current_piece.minoes_coords,
             self.current_piece_sprites
@@ -210,9 +251,9 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 mino_sprite.center_y -= mino_sprite.height-1
 
     def swap(self):
+        self.current_piece_sprites, self.held_piece_sprites = self.held_piece_sprites, self.current_piece_sprites
         super().swap()
-        self.reload_held_piece()
-        self.reload_current_piece()
+        self.ghost_piece_sprites = TetrominoSprites(self.ghost_piece, self.matrix_sprite, GHOST_ALPHA)
 
     def game_over(self):
         super().game_over()
@@ -244,51 +285,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
         else:
             self.stop(self.del_highlight_text)
 
-    def reload_piece(self, piece):
-        piece_sprites = arcade.SpriteList()
-        for mino_coord in piece.minoes_coords:
-            mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
-            mino_sprite = arcade.Sprite(mino_sprite_path)
-            mino_sprite.alpha = NORMAL_ALPHA
-            piece_sprites.append(mino_sprite)
-        return piece_sprites
-
-    def reload_held_piece(self):
-        self.held_piece_sprites = self.reload_piece(self.held_piece)
-
-    def reload_next_pieces(self):
-        self.next_pieces_sprites = arcade.SpriteList()
-        for piece in self.next_pieces:
-            for mino_coord in piece.minoes_coords:
-                mino_sprite_path = MINOES_SPRITES_PATHS[piece.MINOES_COLOR]
-                mino_sprite = arcade.Sprite(mino_sprite_path)
-                mino_sprite.alpha = NORMAL_ALPHA
-                self.next_pieces_sprites.append(mino_sprite)
-
-    def reload_current_piece(self):
-        self.current_piece_sprites = self.reload_piece(self.current_piece)
-        self.ghost_piece_sprites = self.reload_piece(self.ghost_piece)
-
-    def update_piece(self, piece, piece_sprites):
-        if piece:
-            for mino_sprite, mino_coord in zip(
-                piece_sprites, piece.minoes_coords
-            ):
-                mino_coord += piece.coord
-                mino_sprite.left = self.matrix_sprite.left + mino_coord.x*(mino_sprite.width-1)
-                mino_sprite.bottom = self.matrix_sprite.bottom + mino_coord.y*(mino_sprite.height-1)
-
-    def update_current_piece(self):
-        self.update_piece(self.current_piece, self.current_piece_sprites)
-        if self.current_piece.prelocked:
-            alpha = (
-                PRELOCKED_ALPHA
-                if self.current_piece.prelocked
-                else NORMAL_ALPHA
-            )
-            for mino_sprite in self.current_piece_sprites:
-                mino_sprite.alpha = alpha
-
     def on_draw(self):
         arcade.start_render()
         self.bg_sprite.draw()
@@ -298,25 +294,11 @@ class TetrArcade(TetrisLogic, arcade.Window):
             for line in self.matrix_minoes_sprites:
                 line.draw()
 
-            self.update_piece(self.held_piece, self.held_piece_sprites)
             self.held_piece_sprites.draw()
-
-            self.update_current_piece()
             self.current_piece_sprites.draw()
-
-            self.update_piece(self.ghost_piece, self.ghost_piece_sprites)
-            for mino_sprite in self.ghost_piece_sprites:
-                mino_sprite.alpha = GHOST_ALPHA
             self.ghost_piece_sprites.draw()
-
-            for n, piece in enumerate(self.next_pieces):
-                for mino_sprite, mino_coord in zip(
-                    self.next_pieces_sprites[4*n:4*(n+1)], piece.minoes_coords
-                ):
-                    mino_coord += piece.coord
-                    mino_sprite.left = self.matrix_sprite.left + mino_coord.x*(mino_sprite.width-1)
-                    mino_sprite.bottom = self.matrix_sprite.bottom + mino_coord.y*(mino_sprite.height-1)
-            self.next_pieces_sprites.draw()
+            for next_piece_sprites in self.next_pieces_sprites:
+                next_piece_sprites.draw()
 
             arcade.render_text(
                 self.general_text,
