@@ -12,6 +12,8 @@ FALL_DELAY = 1
 AUTOREPEAT_DELAY = 0.200    # Official : 0.300
 AUTOREPEAT_PERIOD = 0.010   # Official : 0.010
 
+LINES_CLEAR_NAME = "LINES_CLEAR_NAME"
+
 
 class Coord:
 
@@ -56,8 +58,8 @@ class Rotation:
 
 class T_Spin:
 
-    NO_T_SPIN =   ""
-    MINI_T_SPIN = "MINI\nT-SPIN"
+    NONE =   ""
+    MINI = "MINI\nT-SPIN"
     T_SPIN =      "T-SPIN"
 
 
@@ -219,18 +221,22 @@ class TetrisLogic():
         self.lock_delay = LOCK_DELAY
         self.fall_delay = FALL_DELAY
 
-        self.matrix = []
-        for y in range(NB_LINES+3):
-            self.append_new_line_to_matrix()
+        self.new_matrix()
         self.new_next_pieces()
         self.current_piece = None
         self.held_piece = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
+
         self.new_level()
 
     def new_next_pieces(self):
         self.next_pieces = [Tetromino() for i in range(NB_NEXT_PIECES)]
+
+    def new_matrix(self):
+        self.matrix = []
+        for y in range(NB_LINES+3):
+            self.append_new_line_to_matrix()
 
     def new_level(self):
         self.level += 1
@@ -241,6 +247,7 @@ class TetrisLogic():
             self.lock_delay = 0.5 * pow(0.9, self.level-15)
         self.show_text("LEVEL\n{:n}".format(self.level))
         self.restart(self.fall, self.fall_delay)
+
         self.new_current_piece()
 
     def new_current_piece(self):
@@ -251,6 +258,7 @@ class TetrisLogic():
         self.next_pieces.append(Tetromino())
         for piece, coord in zip (self.next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
+
         if not self.can_move(
             self.current_piece.coord,
             self.current_piece.minoes_coords
@@ -337,11 +345,11 @@ class TetrisLogic():
             return False
 
     SCORES = (
-        {"name": "", T_Spin.NO_T_SPIN: 0, T_Spin.MINI_T_SPIN: 1, T_Spin.T_SPIN: 4},
-        {"name": "SINGLE", T_Spin.NO_T_SPIN: 1, T_Spin.MINI_T_SPIN: 2, T_Spin.T_SPIN: 8},
-        {"name": "DOUBLE", T_Spin.NO_T_SPIN: 3, T_Spin.MINI_T_SPIN: 12},
-        {"name": "TRIPLE", T_Spin.NO_T_SPIN: 5, T_Spin.T_SPIN: 16},
-        {"name": "TETRIS", T_Spin.NO_T_SPIN: 8}
+        {LINES_CLEAR_NAME: "", T_Spin.NONE: 0, T_Spin.MINI: 1, T_Spin.T_SPIN: 4},
+        {LINES_CLEAR_NAME: "SINGLE", T_Spin.NONE: 1, T_Spin.MINI: 2, T_Spin.T_SPIN: 8},
+        {LINES_CLEAR_NAME: "DOUBLE", T_Spin.NONE: 3, T_Spin.T_SPIN: 12},
+        {LINES_CLEAR_NAME: "TRIPLE", T_Spin.NONE: 5, T_Spin.T_SPIN: 16},
+        {LINES_CLEAR_NAME: "TETRIS", T_Spin.NONE: 8}
     )
 
     def lock(self):
@@ -364,18 +372,6 @@ class TetrisLogic():
             self.game_over()
             return
 
-        self.enter_the_matrix()
-
-        # Clear complete lines
-        nb_lines_cleared = 0
-        for y, line in reversed(list(enumerate(self.matrix))):
-            if all(mino for mino in line):
-                nb_lines_cleared += 1
-                self.remove_line_of_matrix(y)
-                self.append_new_line_to_matrix()
-        if nb_lines_cleared:
-            self.nb_lines += nb_lines_cleared
-
         # T-Spin
         if (
             self.current_piece.CAN_SPIN
@@ -390,11 +386,23 @@ class TetrisLogic():
             ):
                 t_spin = T_Spin.T_SPIN
             elif c and d and (a or b):
-                t_spin = T_Spin.MINI_T_SPIN
+                t_spin = T_Spin.MINI
             else:
-                t_spin = T_Spin.NO_T_SPIN
+                t_spin = T_Spin.NONE
         else:
-            t_spin = T_Spin.NO_T_SPIN
+            t_spin = T_Spin.NONE
+
+        self.enter_the_matrix()
+
+        # Clear complete lines
+        nb_lines_cleared = 0
+        for y, line in reversed(list(enumerate(self.matrix))):
+            if all(mino for mino in line):
+                nb_lines_cleared += 1
+                self.remove_line_of_matrix(y)
+                self.append_new_line_to_matrix()
+        if nb_lines_cleared:
+            self.nb_lines += nb_lines_cleared
 
         # Scoring
         lock_strings = []
@@ -403,7 +411,7 @@ class TetrisLogic():
         if t_spin:
             lock_strings.append(t_spin)
         if nb_lines_cleared:
-            lock_strings.append(self.SCORES[nb_lines_cleared]["name"])
+            lock_strings.append(self.SCORES[nb_lines_cleared][LINES_CLEAR_NAME])
             self.combo += 1
         else:
             self.combo = -1
@@ -415,7 +423,6 @@ class TetrisLogic():
             lock_score += ds
             lock_strings.append(str(ds))
             self.show_text("\n".join(lock_strings))
-
 
         if self.combo >= 1:
             ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level

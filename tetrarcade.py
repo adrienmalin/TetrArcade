@@ -8,11 +8,10 @@ try:
     import arcade
 except ImportError:
     sys.exit(
-"""This game require arcade library.
+        """This game require arcade library.
 You can install it with:
-python -m pip install --user arcade
-"""
-)
+python -m pip install --user arcade"""
+    )
 
 from tetrislogic import TetrisLogic, State, NB_LINES
 
@@ -44,9 +43,11 @@ HARD DROP     SPACE
 ROTATE CLOCKWISE  ↑
 ROTATE COUNTER    Z
 HOLD              C
-PAUSE           ESC"""
-START_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ENTER] TO START"
-PAUSE_TEXT = TITLE_AND_CONTROL_TEXT + "\n\nPRESS [ESC] TO RESUME"
+PAUSE           ESC
+
+"""
+START_TEXT = TITLE_AND_CONTROL_TEXT + "PRESS [ENTER] TO START"
+PAUSE_TEXT = TITLE_AND_CONTROL_TEXT + "PRESS [ESC] TO RESUME"
 STATS_TEXT = """SCORE
 
 HIGH SCORE
@@ -130,9 +131,9 @@ class TetrominoSprites(arcade.SpriteList):
 class TetrArcade(TetrisLogic, arcade.Window):
 
     def __init__(self):
-        super().__init__()
-
         locale.setlocale(locale.LC_ALL, '')
+        self.highlight_texts = []
+        self.tasks = {}
 
         self.KEY_MAP = {
             State.STARTING: {
@@ -170,8 +171,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
             }
         }
 
-        self.highlight_texts = []
-
+        super().__init__()
         arcade.Window.__init__(
             self,
             width = WINDOW_WIDTH,
@@ -205,14 +205,15 @@ class TetrArcade(TetrisLogic, arcade.Window):
             anchor_x = 'right'
         )
 
-        self.tasks = {}
-        self.new_game()
-
     def new_game(self):
         self.highlight_texts = []
-        self.matrix_minoes_sprites = []
         super().new_game()
         self.on_draw()
+
+    def new_matrix(self):
+        self.matrix_minoes_sprites = []
+        super().new_matrix()
+
 
     def new_next_pieces(self):
         super().new_next_pieces()
