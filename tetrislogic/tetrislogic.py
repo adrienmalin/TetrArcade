@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .utils import Coord, Movement, Rotation, T_Spin, Line
-from .tetromino import Tetromino
+from .tetromino import Tetromino, T
 from .consts import (
     NB_LINES, NB_COLS, NB_NEXT,
     LOCK_DELAY, FALL_DELAY,
@@ -71,17 +71,15 @@ class TetrisLogic():
         self.matrix.clear()
         for y in range(NB_LINES+3):
             self.append_new_line_to_matrix()
-        self.next = []
-        for n in range(NB_NEXT):
-            self.new_next()
+        self.next = [self.new_tetromino() for n in range(NB_NEXT)]
         self.held = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
 
         self.new_level()
 
-    def new_next(self):
-        self.next.append(Tetromino())
+    def new_tetromino(self):
+        return Tetromino()
 
     def append_new_line_to_matrix(self):
         self.matrix.append(Line(None for x in range(NB_COLS)))
@@ -103,7 +101,7 @@ class TetrisLogic():
         self.current.coord = CURRENT_COORD
         self.ghost = self.current.ghost()
         self.move_ghost()
-        self.new_next()
+        self.next.append(self.new_tetromino())
         self.next[-1].coord = NEXT_COORDS[-1]
         for tetromino, coord in zip (self.next, NEXT_COORDS):
             tetromino.coord = coord
@@ -207,7 +205,10 @@ class TetrisLogic():
 
     def lock(self):
         # Piece unlocked
-        if self.move(Movement.DOWN):
+        if self.can_move(
+            self.current.coord + Movement.DOWN,
+            (mino.coord for mino in self.current)
+        ):
             return
 
         # Start lock
@@ -227,7 +228,7 @@ class TetrisLogic():
 
         # T-Spin
         if (
-            self.current.__class__ == Tetromino.T
+            type(self.current) == T
             and self.current.last_rotation_point is not None
         ):
             a = self.is_t_slot(0)
