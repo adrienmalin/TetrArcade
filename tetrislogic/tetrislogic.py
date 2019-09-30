@@ -207,7 +207,11 @@ class TetrisLogic():
 
     def lock(self):
         # Piece unlocked
-        if self.move(Movement.DOWN):
+        if self.can_move(
+            self.current.coord + Movement.DOWN,
+            (mino.coord for mino in self.current)
+        ):
+            self.restart(self.lock, self.lock_delay)
             return
 
         # Start lock
