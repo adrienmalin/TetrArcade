@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import random
+
 from .utils import Coord, Movement, Rotation, T_Spin, Line
 from .tetromino import Tetromino, T
 from .consts import (
@@ -31,6 +33,8 @@ class Matrix(list):
 
 
 class TetrisLogic():
+
+    random_bag = []
 
     def __init__(self):
         self.load_high_score()
@@ -79,7 +83,10 @@ class TetrisLogic():
         self.new_level()
 
     def new_tetromino(self):
-        return Tetromino()
+        if not self.random_bag:
+            self.random_bag = list(Tetromino.shapes)
+            random.shuffle(self.random_bag)
+        return self.random_bag.pop()()
 
     def append_new_line_to_matrix(self):
         self.matrix.append(Line(None for x in range(NB_COLS)))

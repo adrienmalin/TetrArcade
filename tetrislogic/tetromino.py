@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import random
-
 from .utils import Coord, Rotation
 
 class Mino:
@@ -17,20 +15,9 @@ class MetaTetromino(type):
         Tetromino.shapes.append(cls)
 
 
-class Tetromino:
+class Tetromino(list):
 
     shapes = []
-    random_bag = []
-
-    def __new__(cls):
-        if not cls.random_bag:
-            cls.random_bag = list(cls.shapes)
-            random.shuffle(cls.random_bag)
-        return cls.random_bag.pop()()
-
-
-class AbstractTetromino(list):
-
     # Super rotation system
     SRS = {
         Rotation.CLOCKWISE: (
@@ -60,7 +47,7 @@ class AbstractTetromino(list):
     def ghost(self):
         return self.__class__()
 
-class O(AbstractTetromino, metaclass=MetaTetromino):
+class O(Tetromino, metaclass=MetaTetromino):
 
     SRS = {
         Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
@@ -73,7 +60,7 @@ class O(AbstractTetromino, metaclass=MetaTetromino):
         return False
 
 
-class I(AbstractTetromino, metaclass=MetaTetromino):
+class I(Tetromino, metaclass=MetaTetromino):
 
     SRS = {
         Rotation.CLOCKWISE: (
@@ -93,31 +80,31 @@ class I(AbstractTetromino, metaclass=MetaTetromino):
     MINOES_COLOR = "cyan"
 
 
-class T(AbstractTetromino, metaclass=MetaTetromino):
+class T(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
     MINOES_COLOR = "magenta"
 
 
-class L(AbstractTetromino, metaclass=MetaTetromino):
+class L(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
     MINOES_COLOR = "orange"
 
 
-class J(AbstractTetromino, metaclass=MetaTetromino):
+class J(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
     MINOES_COLOR = "blue"
 
 
-class S(AbstractTetromino, metaclass=MetaTetromino):
+class S(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
     MINOES_COLOR = "green"
 
 
-class Z(AbstractTetromino, metaclass=MetaTetromino):
+class Z(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
     MINOES_COLOR = "red"
