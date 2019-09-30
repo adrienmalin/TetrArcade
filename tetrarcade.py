@@ -217,8 +217,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
             resizable = False,
             antialiasing = False
         )
-        self.new_game()
-        self.on_draw()
 
     def new_game(self):
         self.highlight_texts = []
