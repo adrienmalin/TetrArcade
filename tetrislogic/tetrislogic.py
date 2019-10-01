@@ -2,7 +2,7 @@
 import random
 
 from .utils import Coord, Movement, Rotation, T_Spin, Line
-from .tetromino import Tetromino, T
+from .tetromino import Tetromino, T, I
 from .consts import (
     NB_LINES, NB_COLS, NB_NEXT,
     LOCK_DELAY, FALL_DELAY,
@@ -326,7 +326,7 @@ class TetrisLogic():
             self.current.prelocked = False
             self.stop(self.lock)
             self.current, self.held = self.held, self.current
-            if self.held.__class__ == Tetromino.I:
+            if type(self.held) == I:
                 self.held.coord = HELD_I_COORD
             else:
                 self.held.coord = HELD_COORD

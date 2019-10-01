@@ -230,8 +230,10 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             font_name = FONT_NAME,
             anchor_x = 'right'
         )
-        self.on_resize(WINDOW_WIDTH, WINDOW_HEIGHT)
-        self.new_game()
+        self.scale = 1
+
+    def on_hide(self):
+        self.pause()
 
     def on_resize(self, width, height):
         super().on_resize(width, height)
@@ -296,7 +298,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
     def swap(self):
         super().swap()
-        self.ghost = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
+        self.ghost.sprites = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
         for tetromino in [self.held, self.current, self.ghost]:
             if tetromino:
                 tetromino.sprites.update()
@@ -387,7 +389,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 start_x = self.matrix_bg.center_x,
                 start_y = self.matrix_bg.center_y,
                 color = HIGHLIGHT_TEXT_COLOR,
-                font_size = HIGHLIGHT_TEXT_SIZE,
+                font_size = HIGHLIGHT_TEXT_SIZE * self.scale,
                 align = 'center',
                 font_name = FONT_NAME,
                 anchor_x = 'center',
