@@ -392,7 +392,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
     def load_high_score(self):
         try:
             with open(HIGH_SCORE_PATH, "rb") as f:
-                crypted_high_score = pickle.load(f)
+                crypted_high_score = f.read()
                 super().load_high_score(crypted_high_score)
         except:
             self.high_score = 0
@@ -403,13 +403,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 os.makedirs(USER_PROFILE_DIR)
             with open(HIGH_SCORE_PATH, mode='wb') as f:
                 crypted_high_score = super().save_high_score()
-                pickle.dump(crypted_high_score, f, pickle.HIGHEST_PROTOCOL)
+                f.write(crypted_high_score)
         except Exception as e:
             sys.exit(
                 """High score: {:n}
 High score could not be saved:
-""".format(self.high_score)
-                + str(e)
+""".format(self.high_score) + str(e)
             )
 
     def start(self, task, period):

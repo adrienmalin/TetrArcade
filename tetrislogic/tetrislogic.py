@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import random
+import pickle
 
 from .utils import Coord, Movement, Rotation, T_Spin, Line
 from .tetromino import Tetromino, T, I
@@ -398,17 +399,20 @@ class TetrisLogic():
         raise Warning("TetrisLogic.show_text not implemented.")
 
     def load_high_score(self, crypted_high_score=None):
-        if crypted_high_score is None:
-            self.high_score = 0
+        if crypted_high_score:
+            crypted_high_score = int(pickle.loads(crypted_high_score))
+            self.high_score = crypted_high_score ^ CRYPT_KEY
+        else:
             raise Warning(
                 """TetrisLogic.load_high_score not implemented.
 High score is set to 0"""
             )
-        else:
-            self.high_score = crypted_high_score ^ CRYPT_KEY
+            self.high_score = 0
 
     def save_high_score(self):
-        return self.high_score ^ CRYPT_KEY
+        crypted_high_score = self.high_score ^ CRYPT_KEY
+        crypted_high_score = pickle.dumps(crypted_high_score)
+        return crypted_high_score
 
     def start(task, period):
         raise Warning("TetrisLogic.start is not implemented.")
