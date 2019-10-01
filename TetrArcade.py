@@ -39,18 +39,21 @@ NORMAL_ALPHA = 200
 PRELOCKED_ALPHA = 100
 GHOST_ALPHA = 30
 MATRIX_BG_ALPHA = 100
+BAR_ALPHA = 75
 
 # Sprites
-WINDOW_BG_PATH = "images/bg.jpg"
-MATRIX_SPRITE_PATH = "images/matrix.png"
+WINDOW_BG_PATH = "res/bg.jpg"
+MATRIX_BG_PATH = "res/matrix.png"
+HELD_BG_PATH = "res/held.png"
+NEXT_BG_PATH = "res/next.png"
 MINOES_SPRITES_PATHS = {
-    "orange": "images/orange_mino.png",
-    "blue": "images/blue_mino.png",
-    "yellow": "images/yellow_mino.png",
-    "cyan": "images/cyan_mino.png",
-    "green": "images/green_mino.png",
-    "red": "images/red_mino.png",
-    "magenta": "images/magenta_mino.png",
+    "orange": "res/orange_mino.png",
+    "blue": "res/blue_mino.png",
+    "yellow": "res/yellow_mino.png",
+    "cyan": "res/cyan_mino.png",
+    "green": "res/green_mino.png",
+    "red": "res/red_mino.png",
+    "magenta": "res/magenta_mino.png",
 }
 
 # User profile path
@@ -68,7 +71,7 @@ CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
-FONT_NAME = "joystix monospace.ttf"
+FONT_NAME = "res/joystix monospace.ttf"
 STATS_TEXT_MARGIN = 40
 STATS_TEXT_SIZE = 14
 STATS_TEXT_WIDTH = 150
@@ -160,12 +163,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         arcade.set_background_color(BG_COLOR)
         self.set_minimum_size(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
-        self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
+        self.matrix_bg = arcade.Sprite(MATRIX_BG_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
-        self.held_bg = arcade.Sprite("images/held.png")
-        self.held_bg.alpha = MATRIX_BG_ALPHA
-        self.next_bg = arcade.Sprite("images/next.png")
-        self.next_bg.alpha = MATRIX_BG_ALPHA
+        self.held_bg = arcade.Sprite(HELD_BG_PATH)
+        self.held_bg.alpha = BAR_ALPHA
+        self.next_bg = arcade.Sprite(NEXT_BG_PATH)
+        self.next_bg.alpha = BAR_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
 
