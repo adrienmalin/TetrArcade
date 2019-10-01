@@ -22,6 +22,7 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 WINDOW_TITLE = "TETRARCADE"
 MINO_SIZE = 20
+BG_COLOR = (7, 11, 21)
 
 # Delays (seconds)
 HIGHLIGHT_TEXT_DISPLAY_DELAY = 0.7
@@ -55,12 +56,12 @@ HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
-HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
-TEXT_MARGIN = 40
-FONT_SIZE = 16
-TEXT_HEIGHT = 20.8
-HIGHLIGHT_TEXT_FONT_SIZE = 20
+STATS_TEXT_MARGIN = 40
+STATS_TEXT_SIZE = 16
+STATS_TEXT_HEIGHT = 20.8
+HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
+HIGHLIGHT_TEXT_SIZE = 20
 
 CONTROL_TEXT = """
 
@@ -74,7 +75,9 @@ HARD DROP        SPACE
 ROTATE CLOCKWISE     ↑
 ROTATE COUNTER       Z
 HOLD                 C
+FULLSCREEN         F11
 PAUSE              ESC
+QUIT            ALT+F4
 
 
 """
@@ -103,24 +106,32 @@ AGAIN"""
 
 class MinoSprite(arcade.Sprite):
 
-    def __init__(self, mino, matrix_bg, alpha):
-        super().__init__(MINOES_SPRITES_PATHS[mino.color])
+    def __init__(self, mino, window, alpha):
+        super().__init__(MINOES_SPRITES_PATHS[mino.color], window.scale)
         self.alpha = alpha
-        self.matrix_bg = matrix_bg
+        self.window = window
 
     def set_position(self, x, y):
-        self.left   = self.matrix_bg.left   + x*MINO_SIZE
-        self.bottom = self.matrix_bg.bottom + y*MINO_SIZE
+        size = MINO_SIZE * self.scale
+        self.left   = self.window.matrix_bg.left   + x*size
+        self.bottom = self.window.matrix_bg.bottom + y*size
 
 
-class TetrominoSprites(arcade.SpriteList):
+class MinoesSprites(arcade.SpriteList):
 
-    def __init__(self, tetromino, matrix_bg, alpha=NORMAL_ALPHA):
+    def resize(self, scale):
+        for sprite in self:
+            sprite.scale = scale
+        self.update()
+
+
+class TetrominoSprites(MinoesSprites):
+
+    def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
-        self.matrix_bg = matrix_bg
         for mino in tetromino:
-            mino.sprite = MinoSprite(mino, matrix_bg, alpha)
+            mino.sprite = MinoSprite(mino, window, alpha)
             self.append(mino.sprite)
 
     def update(self):
@@ -134,7 +145,7 @@ class TetrominoSprites(arcade.SpriteList):
             sprite.alpha = alpha
 
 
-class MatrixSprites(arcade.SpriteList):
+class MatrixSprites(MinoesSprites):
 
     def __init__(self, matrix):
         super().__init__()
@@ -159,7 +170,8 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
         self.KEY_MAP = {
             tetrislogic.State.STARTING: {
-                arcade.key.ENTER:     self.new_game
+                arcade.key.ENTER:     self.new_game,
+                arcade.key.F11:       self.toogle_fullscreen
             },
             tetrislogic.State.PLAYING: {
                 arcade.key.LEFT:      self.move_left,
@@ -183,13 +195,16 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 arcade.key.NUM_0:     self.swap,
                 arcade.key.ESCAPE:    self.pause,
                 arcade.key.F1:        self.pause,
+                arcade.key.F11:       self.toogle_fullscreen
             },
             tetrislogic.State.PAUSED: {
                 arcade.key.ESCAPE:    self.resume,
-                arcade.key.F1:        self.resume
+                arcade.key.F1:        self.resume,
+                arcade.key.F11:       self.toogle_fullscreen
             },
             tetrislogic.State.OVER: {
-                arcade.key.ENTER:     self.new_game
+                arcade.key.ENTER:     self.new_game,
+                arcade.key.F11:       self.toogle_fullscreen
             }
         }
 
@@ -200,29 +215,48 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             width = WINDOW_WIDTH,
             height = WINDOW_HEIGHT,
             title = WINDOW_TITLE,
-            resizable = False,
+            resizable = True,
             antialiasing = False
         )
-
-        center_x = WINDOW_WIDTH / 2
-        center_y = WINDOW_HEIGHT / 2
+        arcade.set_background_color(BG_COLOR)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
-        self.bg.center_x = center_x
-        self.bg.center_y = center_y
         self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
-        self.matrix_bg.center_x = center_x
-        self.matrix_bg.center_y = center_y
-        self.matrix_bg.left = int(self.matrix_bg.left)
-        self.matrix_bg.top  = int(self.matrix_bg.top)
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.stats_text = arcade.create_text(
             text = STATS_TEXT,
             color = TEXT_COLOR,
-            font_size = FONT_SIZE,
+            font_size = STATS_TEXT_SIZE,
             font_name = FONT_NAME,
             anchor_x = 'right'
         )
+        self.on_resize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.new_game()
+
+    def on_resize(self, width, height):
+        super().on_resize(width, height)
+        center_x = width / 2
+        center_y = height / 2
+        self.scale = min(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+
+        self.bg.scale = max(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+        self.bg.center_x = center_x
+        self.bg.center_y = center_y
+
+        self.matrix_bg.scale = self.scale
+        self.matrix_bg.center_x = center_x
+        self.matrix_bg.center_y = center_y
+        self.matrix_bg.left = int(self.matrix_bg.left)
+        self.matrix_bg.top  = int(self.matrix_bg.top)
+
+        self.matrix.sprites.resize(self.scale)
+
+        for tetromino in [self.held, self.current, self.ghost] + self.next:
+            if tetromino:
+                tetromino.sprites.resize(self.scale)
+
+    def toogle_fullscreen(self):
+        self.fullscreen = not self.fullscreen
 
     def new_game(self):
         self.highlight_texts = []
@@ -230,13 +264,13 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
     def new_tetromino(self):
         tetromino = super().new_tetromino()
-        tetromino.sprites = TetrominoSprites(tetromino, self.matrix_bg)
+        tetromino.sprites = TetrominoSprites(tetromino, self)
         return tetromino
 
     def new_current(self):
         self.matrix.sprites = MatrixSprites(self.matrix)
         super().new_current()
-        self.ghost.sprites = TetrominoSprites(self.ghost, self.matrix_bg, GHOST_ALPHA)
+        self.ghost.sprites = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
         for tetromino in [self.current, self.ghost] + self.next:
             tetromino.sprites.update()
 
@@ -245,8 +279,9 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         if self.current.prelocked:
             self.current.sprites.set_alpha(PRELOCKED_ALPHA)
         if moved:
-            change_x = movement.x * MINO_SIZE
-            change_y = movement.y * MINO_SIZE
+            size = MINO_SIZE * self.scale
+            change_x = movement.x * size
+            change_y = movement.y * size
             self.current.sprites.move(change_x, change_y)
             if movement in (tetrislogic.Movement.LEFT, tetrislogic.Movement.RIGHT):
                 self.ghost.sprites.update()
@@ -261,7 +296,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
     def swap(self):
         super().swap()
-        self.ghost = TetrominoSprites(self.ghost, self.matrix_bg, GHOST_ALPHA)
+        self.ghost = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
         for tetromino in [self.held, self.current, self.ghost]:
             if tetromino:
                 tetromino.sprites.update()
@@ -312,7 +347,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
             arcade.render_text(
                 self.stats_text,
-                self.matrix_bg.left - TEXT_MARGIN,
+                self.matrix_bg.left - STATS_TEXT_MARGIN,
                 self.matrix_bg.bottom
             )
             t = time.localtime(self.time)
@@ -331,10 +366,10 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             ):
                 arcade.draw_text(
                     text = text,
-                    start_x = self.matrix_bg.left - TEXT_MARGIN,
-                    start_y = self.matrix_bg.bottom + 2*y*TEXT_HEIGHT,
+                    start_x = self.matrix_bg.left - STATS_TEXT_MARGIN,
+                    start_y = self.matrix_bg.bottom + 2*y*STATS_TEXT_HEIGHT,
                     color = TEXT_COLOR,
-                    font_size = FONT_SIZE,
+                    font_size = STATS_TEXT_SIZE,
                     align = 'right',
                     font_name = FONT_NAME,
                     anchor_x = 'right'
@@ -352,7 +387,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 start_x = self.matrix_bg.center_x,
                 start_y = self.matrix_bg.center_y,
                 color = HIGHLIGHT_TEXT_COLOR,
-                font_size = HIGHLIGHT_TEXT_FONT_SIZE,
+                font_size = HIGHLIGHT_TEXT_SIZE,
                 align = 'center',
                 font_name = FONT_NAME,
                 anchor_x = 'center',
