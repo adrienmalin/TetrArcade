@@ -26,3 +26,10 @@ python tetrarcade.py
 * Linux: Edit `~/.local/share/Tetrarcade/TetrArcade.ini`
 
 Use key name from [arcade.key package](http://arcade.academy/arcade.key.html).
+
+## Build
+
+```shell
+python -m pip install cx-freeze
+python setup.py build
+```
