@@ -224,12 +224,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             self.conf["KEYBOARD"]["pause"]
         )
         self.game_over_text = """GAME
-        OVER
+OVER
 
-        PRESS
-        [{}]
-        TO PLAY
-        AGAIN""".format(
+PRESS
+[{}]
+TO PLAY
+AGAIN""".format(
             self.conf["KEYBOARD"]["start"]
         )
 
