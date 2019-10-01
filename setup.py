@@ -4,13 +4,27 @@ from cx_Freeze import setup, Executable
 
 if sys.platform == "win32":
     base = "Win32GUI"
+    icon = "icon.ico"
 else:
     base = None
+    icon = None
 
 setup(
     name="TetrArcade",
     version="0.1",
     description="Tetris clone",
-    executables=[Executable(script="TetrArcade.py", icon="icon.ico")],
-    options={"build_exe": {"packages": ["arcade"], "excludes": ["tkinter"]}},
+    author="adrienmalin",
+    executables=[Executable(
+        script="TetrArcade.py",
+        icon=icon,
+        base=base
+    )],
+    options={
+        "build_exe": {
+            "packages": ["arcade"],
+            "excludes": ["tkinter"],
+            "include_files": "res",
+            "silent": True
+        }
+    },
 )
