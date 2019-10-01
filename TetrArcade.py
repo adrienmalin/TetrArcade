@@ -65,7 +65,8 @@ CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
 TEXT_COLOR = arcade.color.BUBBLES
 FONT_NAME = "joystix monospace.ttf"
 STATS_TEXT_MARGIN = 40
-STATS_TEXT_SIZE = 16
+STATS_TEXT_SIZE = 14
+STATS_TEXT_WIDTH = 150
 HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 HIGHLIGHT_TEXT_SIZE = 20
 
@@ -160,6 +161,10 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
         self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
+        self.held_bg = arcade.Sprite("images/held.png")
+        self.held_bg.alpha = MATRIX_BG_ALPHA
+        self.next_bg = arcade.Sprite("images/next.png")
+        self.next_bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
 
@@ -314,6 +319,8 @@ AGAIN""".format(
 
         if self.state in (tetrislogic.State.PLAYING, tetrislogic.State.OVER):
             self.matrix_bg.draw()
+            self.held_bg.draw()
+            self.next_bg.draw()
             self.matrix.sprites.draw()
 
             for tetromino in [self.held, self.current, self.ghost] + self.next:
@@ -334,7 +341,7 @@ AGAIN""".format(
             ):
                 arcade.draw_text(
                     text = text,
-                    start_x = self.matrix_bg.left - STATS_TEXT_MARGIN*self.scale - self.matrix_bg.width,
+                    start_x = self.matrix_bg.left - self.scale*(STATS_TEXT_MARGIN + STATS_TEXT_WIDTH),
                     start_y = self.matrix_bg.bottom + 1.5*(2*y+1)*font_size,
                     color = TEXT_COLOR,
                     font_size = font_size,
@@ -405,6 +412,14 @@ AGAIN""".format(
         self.matrix_bg.center_y = center_y
         self.matrix_bg.left = int(self.matrix_bg.left)
         self.matrix_bg.top  = int(self.matrix_bg.top)
+
+        self.held_bg.scale = self.scale
+        self.held_bg.right = self.matrix_bg.left
+        self.held_bg.top = self.matrix_bg.top
+
+        self.next_bg.scale = self.scale
+        self.next_bg.left = self.matrix_bg.right
+        self.next_bg.top = self.matrix_bg.top
 
         self.matrix.sprites.resize(self.scale)
 
