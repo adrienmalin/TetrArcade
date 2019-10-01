@@ -45,7 +45,7 @@ class Tetromino(list):
         self.prelocked = False
 
     def ghost(self):
-        return self.__class__()
+        return type(self)()
 
 class O(Tetromino, metaclass=MetaTetromino):
 
