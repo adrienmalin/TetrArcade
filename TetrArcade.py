@@ -3,6 +3,7 @@ import sys
 import locale
 import time
 import os
+import pickle
 
 try:
     import arcade
@@ -391,8 +392,9 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
     def load_high_score(self):
         try:
-            with open(HIGH_SCORE_PATH, "r") as f:
-               self.high_score = int(f.read()) ^ CRYPT_KEY
+            with open(HIGH_SCORE_PATH, "rb") as f:
+                crypted_high_score = pickle.load(f)
+                self.high_score = crypted_high_score ^ CRYPT_KEY
         except:
             self.high_score = 0
 
@@ -400,8 +402,9 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         try:
             if not os.path.exists(USER_PROFILE_DIR):
                 os.makedirs(USER_PROFILE_DIR)
-            with open(HIGH_SCORE_PATH, mode='w') as f:
-                f.write(str(self.high_score ^ CRYPT_KEY))
+            with open(HIGH_SCORE_PATH, mode='wb') as f:
+                crypted_high_score = self.high_score ^ CRYPT_KEY
+                pickle.dump(crypted_high_score, f, pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             sys.exit(
                 """High score: {:n}
