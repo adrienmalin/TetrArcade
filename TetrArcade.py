@@ -235,7 +235,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 tetromino.sprites.resize(self.scale)
 
     def toggle_fullscreen(self):
-        self.fullscreen = not self.fullscreen
+        self.set_fullscreen(not self.fullscreen)
 
     def new_game(self):
         self.highlight_texts = []
