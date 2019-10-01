@@ -209,34 +209,6 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
 
-    def on_hide(self):
-        self.pause()
-
-    def on_resize(self, width, height):
-        super().on_resize(width, height)
-        center_x = width / 2
-        center_y = height / 2
-        self.scale = min(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
-
-        self.bg.scale = max(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
-        self.bg.center_x = center_x
-        self.bg.center_y = center_y
-
-        self.matrix_bg.scale = self.scale
-        self.matrix_bg.center_x = center_x
-        self.matrix_bg.center_y = center_y
-        self.matrix_bg.left = int(self.matrix_bg.left)
-        self.matrix_bg.top  = int(self.matrix_bg.top)
-
-        self.matrix.sprites.resize(self.scale)
-
-        for tetromino in [self.held, self.current, self.ghost] + self.next:
-            if tetromino:
-                tetromino.sprites.resize(self.scale)
-
-    def toggle_fullscreen(self):
-        self.set_fullscreen(not self.fullscreen)
-
     def new_game(self):
         self.highlight_texts = []
         super().new_game()
@@ -387,6 +359,34 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 anchor_x = 'center',
                 anchor_y = 'center'
             )
+
+    def on_hide(self):
+        self.pause()
+
+    def toggle_fullscreen(self):
+        self.set_fullscreen(not self.fullscreen)
+
+    def on_resize(self, width, height):
+        super().on_resize(width, height)
+        center_x = width / 2
+        center_y = height / 2
+        self.scale = min(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+
+        self.bg.scale = max(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+        self.bg.center_x = center_x
+        self.bg.center_y = center_y
+
+        self.matrix_bg.scale = self.scale
+        self.matrix_bg.center_x = center_x
+        self.matrix_bg.center_y = center_y
+        self.matrix_bg.left = int(self.matrix_bg.left)
+        self.matrix_bg.top  = int(self.matrix_bg.top)
+
+        self.matrix.sprites.resize(self.scale)
+
+        for tetromino in [self.held, self.current, self.ghost] + self.next:
+            if tetromino:
+                tetromino.sprites.resize(self.scale)
 
     def load_high_score(self):
         try:

@@ -216,6 +216,7 @@ class TetrisLogic():
             self.current.coord + Movement.DOWN,
             (mino.coord for mino in self.current)
         ):
+            self.restart(self.lock, self.lock_delay)
             return
 
         # Start lock
