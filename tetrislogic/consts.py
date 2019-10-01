@@ -21,4 +21,3 @@ NEXT_COORDS = [
     for n in range(NB_NEXT)
 ]
 HELD_COORD = Coord(-7, NB_LINES-3)
-HELD_I_COORD = Coord(-7, NB_LINES-3)

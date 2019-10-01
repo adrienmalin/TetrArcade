@@ -8,7 +8,7 @@ from .consts import (
     NB_LINES, NB_COLS, NB_NEXT,
     LOCK_DELAY, FALL_DELAY,
     AUTOREPEAT_DELAY, AUTOREPEAT_PERIOD,
-    CURRENT_COORD, NEXT_COORDS, HELD_COORD, HELD_I_COORD
+    CURRENT_COORD, NEXT_COORDS, HELD_COORD
 )
 
 
@@ -36,6 +36,16 @@ class Matrix(list):
 
 class TetrisLogic():
 
+    NB_LINES = NB_LINES
+    NB_COLS = NB_COLS
+    NB_NEXT = NB_NEXT
+    LOCK_DELAY = LOCK_DELAY
+    FALL_DELAY = FALL_DELAY
+    AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
+    AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
+    CURRENT_COORD = CURRENT_COORD
+    NEXT_COORDS = NEXT_COORDS
+    HELD_COORD = HELD_COORD
     random_bag = []
 
     def __init__(self):
@@ -71,13 +81,13 @@ class TetrisLogic():
         self.pressed_actions = []
         self.auto_repeat = False
 
-        self.lock_delay = LOCK_DELAY
-        self.fall_delay = FALL_DELAY
+        self.lock_delay = self.LOCK_DELAY
+        self.fall_delay = self.FALL_DELAY
 
         self.matrix.clear()
-        for y in range(NB_LINES+3):
+        for y in range(self.NB_LINES+3):
             self.append_new_line_to_matrix()
-        self.next = [self.new_tetromino() for n in range(NB_NEXT)]
+        self.next = [self.new_tetromino() for n in range(self.NB_NEXT)]
         self.held = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
@@ -91,7 +101,7 @@ class TetrisLogic():
         return self.random_bag.pop()()
 
     def append_new_line_to_matrix(self):
-        self.matrix.append(Line(None for x in range(NB_COLS)))
+        self.matrix.append(Line(None for x in range(self.NB_COLS)))
 
     def new_level(self):
         self.level += 1
@@ -107,12 +117,12 @@ class TetrisLogic():
 
     def new_current(self):
         self.current = self.next.pop(0)
-        self.current.coord = CURRENT_COORD
+        self.current.coord = self.CURRENT_COORD
         self.ghost = self.current.ghost()
         self.move_ghost()
         self.next.append(self.new_tetromino())
-        self.next[-1].coord = NEXT_COORDS[-1]
-        for tetromino, coord in zip (self.next, NEXT_COORDS):
+        self.next[-1].coord = self.NEXT_COORDS[-1]
+        for tetromino, coord in zip (self.next, self.NEXT_COORDS):
             tetromino.coord = coord
 
         if not self.can_move(
@@ -226,11 +236,11 @@ class TetrisLogic():
         self.stop(self.lock)
         if self.pressed_actions:
             self.auto_repeat = False
-            self.restart(self.repeat_action, AUTOREPEAT_DELAY)
+            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         # Game over
         if all(
-            (mino.coord + self.current.coord).y >= NB_LINES
+            (mino.coord + self.current.coord).y >= self.NB_LINES
             for mino in self.current
         ):
             self.game_over()
@@ -259,7 +269,7 @@ class TetrisLogic():
         for mino in self.current:
             coord = mino.coord + self.current.coord
             del(mino.coord)
-            if coord.y <= NB_LINES+3:
+            if coord.y <= self.NB_LINES+3:
                 self.matrix[coord.y][coord.x] = mino
 
         # Clear complete lines
@@ -330,14 +340,14 @@ class TetrisLogic():
             self.stop(self.lock)
             self.current, self.held = self.held, self.current
             if type(self.held) == I:
-                self.held.coord = HELD_I_COORD
+                self.held.coord = self.HELD_COORD + Movement.LEFT
             else:
-                self.held.coord = HELD_COORD
+                self.held.coord = self.HELD_COORD
             for mino, coord in zip(self.held, self.held.MINOES_COORDS):
                 mino.coord = coord
 
             if self.current:
-                self.current.coord = CURRENT_COORD
+                self.current.coord = self.CURRENT_COORD
                 self.ghost = self.current.ghost()
                 self.move_ghost()
             else:
@@ -375,14 +385,14 @@ class TetrisLogic():
         if action in self.autorepeatable_actions:
             self.auto_repeat = False
             self.pressed_actions.append(action)
-            self.restart(self.repeat_action, AUTOREPEAT_DELAY)
+            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
     def repeat_action(self):
         if self.pressed_actions:
             self.pressed_actions[-1]()
             if not self.auto_repeat:
                 self.auto_repeat = True
-                self.restart(self.repeat_action, AUTOREPEAT_PERIOD)
+                self.restart(self.repeat_action, self.AUTOREPEAT_PERIOD)
         else:
             self.auto_repeat = False
             self.stop(self.repeat_action)
@@ -423,4 +433,3 @@ High score is set to 0"""
     def restart(self, task, period):
         self.stop(task)
         self.start(task, period)
-
