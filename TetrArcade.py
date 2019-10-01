@@ -24,6 +24,8 @@ import tetrislogic
 # Window
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+WINDOW_MIN_WIDTH = 517
+WINDOW_MIN_HEIGHT = 388
 WINDOW_TITLE = "TETRARCADE"
 MINO_SIZE = 20
 BG_COLOR = (7, 11, 21)
@@ -152,11 +154,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             fullscreen = self.init_fullscreen
         )
         arcade.set_background_color(BG_COLOR)
-        self.set_minimum_size(517, 388)
+        self.set_minimum_size(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
         self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
+        self.on_resize(self.init_width, self.init_height)
 
     def new_conf(self):
         self.conf["WINDOW"] = {
