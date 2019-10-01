@@ -129,7 +129,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         locale.setlocale(locale.LC_ALL, '')
         self.highlight_texts = []
         self.tasks = {}
-        
+
         self.conf = configparser.ConfigParser()
         if self.conf.read(CONF_PATH):
             try:
@@ -140,7 +140,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         else:
             self.new_conf()
             self.load_conf()
-            
+
         super().__init__()
         arcade.Window.__init__(
             self,
@@ -157,7 +157,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
-            
+
     def new_conf(self):
         self.conf["WINDOW"] = {
             "width": WINDOW_WIDTH,
@@ -181,12 +181,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             os.makedirs(USER_PROFILE_DIR)
         with open(CONF_PATH, 'w') as f:
             self.conf.write(f)
-        
+
     def load_conf(self):
         self.init_width = int(self.conf["WINDOW"]["width"])
         self.init_height = int(self.conf["WINDOW"]["height"])
         self.init_fullscreen = self.conf["WINDOW"].getboolean("fullscreen")
-        
+
         self.key_map = {
             tetrislogic.State.STARTING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
@@ -225,7 +225,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         )
         self.game_over_text = """GAME
         OVER
-        
+
         PRESS
         [{}]
         TO PLAY
@@ -278,8 +278,8 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
 
     def lock(self):
         self.current.sprites.refresh()
-        super().lock()
         self.current.sprites.set_alpha(NORMAL_ALPHA)
+        super().lock()
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -458,7 +458,7 @@ High score could not be saved:
         else:
             arcade.unschedule(_task)
         arcade.schedule(_task, period)
-        
+
     def on_close(self):
         self.save_high_score()
         super().on_close()
