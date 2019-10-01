@@ -96,18 +96,20 @@ class TetrominoSprites(MinoesSprites):
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
+        self.alpha = alpha
         for mino in tetromino:
             mino.sprite = MinoSprite(mino, window, alpha)
             self.append(mino.sprite)
 
     def refresh(self):
+        if self.tetromino.prelocked:
+            alpha = PRELOCKED_ALPHA
+        else:
+            alpha = self.alpha
         for mino in self.tetromino:
             coord = mino.coord + self.tetromino.coord
             mino.sprite.set_position(coord.x, coord.y)
-
-    def set_alpha(self, alpha):
-        for sprite in self:
-            sprite.alpha = alpha
+            mino.sprite.alpha = alpha
 
 
 class MatrixSprites(MinoesSprites):
@@ -254,18 +256,9 @@ AGAIN""".format(
 
     def move(self, movement, prelock=True):
         moved = super().move(movement, prelock)
-        if self.current.prelocked:
-            alpha = PRELOCKED_ALPHA
-        else:
-            alpha = NORMAL_ALPHA
-        self.current.sprites.set_alpha(alpha)
+        self.current.sprites.refresh()
         if moved:
-            size = MINO_SIZE * self.scale
-            change_x = movement.x * size
-            change_y = movement.y * size
-            self.current.sprites.move(change_x, change_y)
-            if movement in (tetrislogic.Movement.LEFT, tetrislogic.Movement.RIGHT):
-                self.ghost.sprites.refresh()
+            self.ghost.sprites.refresh()
         return moved
 
     def rotate(self, rotation):
@@ -283,8 +276,8 @@ AGAIN""".format(
                 tetromino.sprites.refresh()
 
     def lock(self):
+        self.current.prelocked = False
         self.current.sprites.refresh()
-        self.current.sprites.set_alpha(NORMAL_ALPHA)
         super().lock()
 
     def on_key_press(self, key, modifiers):
