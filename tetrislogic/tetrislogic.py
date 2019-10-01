@@ -12,6 +12,7 @@ from .consts import (
 
 
 LINES_CLEAR_NAME = "LINES_CLEAR_NAME"
+CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 
 class State:
@@ -396,19 +397,18 @@ class TetrisLogic():
         print(text)
         raise Warning("TetrisLogic.show_text not implemented.")
 
-    def load_high_score(self):
-        self.high_score = 0
-        raise Warning(
-            """TetrisLogic.load_high_score not implemented.
+    def load_high_score(self, crypted_high_score=None):
+        if crypted_high_score is None:
+            self.high_score = 0
+            raise Warning(
+                """TetrisLogic.load_high_score not implemented.
 High score is set to 0"""
-        )
+            )
+        else:
+            self.high_score = crypted_high_score ^ CRYPT_KEY
 
     def save_high_score(self):
-        print("High score: {:n}".format(self.high_score))
-        raise Warning(
-            """TetrisLogic.save_high_score not implemented.
-High score is not saved"""
-        )
+        return self.high_score ^ CRYPT_KEY
 
     def start(task, period):
         raise Warning("TetrisLogic.start is not implemented.")

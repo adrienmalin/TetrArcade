@@ -54,7 +54,6 @@ else:
     USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
 USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
 HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
-CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
@@ -394,7 +393,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         try:
             with open(HIGH_SCORE_PATH, "rb") as f:
                 crypted_high_score = pickle.load(f)
-                self.high_score = crypted_high_score ^ CRYPT_KEY
+                super().load_high_score(crypted_high_score)
         except:
             self.high_score = 0
 
@@ -403,7 +402,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             if not os.path.exists(USER_PROFILE_DIR):
                 os.makedirs(USER_PROFILE_DIR)
             with open(HIGH_SCORE_PATH, mode='wb') as f:
-                crypted_high_score = self.high_score ^ CRYPT_KEY
+                crypted_high_score = super().save_high_score()
                 pickle.dump(crypted_high_score, f, pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             sys.exit(
