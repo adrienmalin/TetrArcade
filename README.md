@@ -19,3 +19,10 @@ python -m pip install -r requirements.txt
 ```shell
 python tetrarcade.py
 ```
+
+## Settings
+
+* Windows: Edit `%appdata%\Tetrarcade\TetrArcade.ini`
+* Linux: Edit `~/.local/share/Tetrarcade/TetrArcade.ini`
+
+Use key name from [arcade.key package](http://arcade.academy/arcade.key.html).

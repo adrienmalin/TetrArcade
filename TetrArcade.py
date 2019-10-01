@@ -3,7 +3,10 @@ import sys
 import locale
 import time
 import os
-import pickle
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 try:
     import arcade
@@ -54,6 +57,7 @@ else:
     USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
 USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
 HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
+CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
@@ -62,34 +66,6 @@ STATS_TEXT_MARGIN = 40
 STATS_TEXT_SIZE = 16
 HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 HIGHLIGHT_TEXT_SIZE = 20
-
-CONTROL_TEXT = """
-
-
-CONTROLS
-
-MOVE LEFT            ←
-MOVE RIGHT           →
-SOFT DROP            ↓
-HARD DROP        SPACE
-ROTATE CLOCKWISE     ↑
-ROTATE COUNTER       Z
-HOLD                 C
-FULLSCREEN         F11
-PAUSE              ESC
-QUIT            ALT+F4
-
-
-"""
-START_TEXT = "TETRARCADE" + CONTROL_TEXT + "PRESS [ENTER] TO START"
-PAUSE_TEXT = "PAUSE" + CONTROL_TEXT + "PRESS [ESC] TO RESUME"
-GAME_OVER_TEXT = """GAME
-OVER
-
-PRESS
-[ENTER]
-TO PLAY
-AGAIN"""
 
 
 class MinoSprite(arcade.Sprite):
@@ -153,62 +129,109 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         locale.setlocale(locale.LC_ALL, '')
         self.highlight_texts = []
         self.tasks = {}
-
-        self.KEY_MAP = {
-            tetrislogic.State.STARTING: {
-                arcade.key.ENTER:     self.new_game,
-                arcade.key.F11:       self.toggle_fullscreen
-            },
-            tetrislogic.State.PLAYING: {
-                arcade.key.LEFT:      self.move_left,
-                arcade.key.NUM_4:     self.move_left,
-                arcade.key.RIGHT:     self.move_right,
-                arcade.key.NUM_6:     self.move_right,
-                arcade.key.SPACE:     self.hard_drop,
-                arcade.key.NUM_8:     self.hard_drop,
-                arcade.key.DOWN:      self.soft_drop,
-                arcade.key.NUM_2:     self.soft_drop,
-                arcade.key.UP:        self.rotate_clockwise,
-                arcade.key.X:         self.rotate_clockwise,
-                arcade.key.NUM_1:     self.rotate_clockwise,
-                arcade.key.NUM_5:     self.rotate_clockwise,
-                arcade.key.NUM_9:     self.rotate_clockwise,
-                arcade.key.Z:         self.rotate_counter,
-                arcade.key.NUM_3:     self.rotate_counter,
-                arcade.key.NUM_7:     self.rotate_counter,
-                arcade.key.C:         self.swap,
-                arcade.key.MOD_SHIFT: self.swap,
-                arcade.key.NUM_0:     self.swap,
-                arcade.key.ESCAPE:    self.pause,
-                arcade.key.F1:        self.pause,
-                arcade.key.F11:       self.toggle_fullscreen
-            },
-            tetrislogic.State.PAUSED: {
-                arcade.key.ESCAPE:    self.resume,
-                arcade.key.F1:        self.resume,
-                arcade.key.F11:       self.toggle_fullscreen
-            },
-            tetrislogic.State.OVER: {
-                arcade.key.ENTER:     self.new_game,
-                arcade.key.F11:       self.toggle_fullscreen
-            }
-        }
-
+        
+        self.conf = configparser.ConfigParser()
+        if self.conf.read(CONF_PATH):
+            try:
+                self.load_conf()
+            except:
+                self.new_conf()
+                self.load_conf()
+        else:
+            self.new_conf()
+            self.load_conf()
+            
         super().__init__()
-
         arcade.Window.__init__(
             self,
-            width = WINDOW_WIDTH,
-            height = WINDOW_HEIGHT,
+            width = self.init_width,
+            height = self.init_height,
             title = WINDOW_TITLE,
             resizable = True,
-            antialiasing = False
+            antialiasing = False,
+            fullscreen = self.init_fullscreen
         )
         arcade.set_background_color(BG_COLOR)
+        self.set_minimum_size(517, 388)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
         self.matrix_bg = arcade.Sprite(MATRIX_SPRITE_PATH)
         self.matrix_bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
+            
+    def new_conf(self):
+        self.conf["WINDOW"] = {
+            "width": WINDOW_WIDTH,
+            "height": WINDOW_HEIGHT,
+            "fullscreen": False
+        }
+        self.conf["KEYBOARD"] = {
+            "start": "ENTER",
+            "move left": "LEFT",
+            "move right": "RIGHT",
+            "soft drop": "DOWN",
+            "hard drop": "SPACE",
+            "rotate clockwise": "UP",
+            "rotate counter": "Z",
+            "hold": "C",
+            "pause": "ESCAPE",
+            "fullscreen": "F11"
+        }
+        self.load_conf()
+        if not os.path.exists(USER_PROFILE_DIR):
+            os.makedirs(USER_PROFILE_DIR)
+        with open(CONF_PATH, 'w') as f:
+            self.conf.write(f)
+        
+    def load_conf(self):
+        self.init_width = int(self.conf["WINDOW"]["width"])
+        self.init_height = int(self.conf["WINDOW"]["height"])
+        self.init_fullscreen = self.conf["WINDOW"].getboolean("fullscreen")
+        
+        self.key_map = {
+            tetrislogic.State.STARTING: {
+                getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
+                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+            },
+            tetrislogic.State.PLAYING: {
+                getattr(arcade.key, self.conf["KEYBOARD"]["move left"]): self.move_left,
+                getattr(arcade.key, self.conf["KEYBOARD"]["move right"]): self.move_right,
+                getattr(arcade.key, self.conf["KEYBOARD"]["soft drop"]): self.soft_drop,
+                getattr(arcade.key, self.conf["KEYBOARD"]["hard drop"]): self.hard_drop,
+                getattr(arcade.key, self.conf["KEYBOARD"]["rotate clockwise"]): self.rotate_clockwise,
+                getattr(arcade.key, self.conf["KEYBOARD"]["rotate counter"]): self.rotate_counter,
+                getattr(arcade.key, self.conf["KEYBOARD"]["hold"]): self.swap,
+                getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.pause,
+                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+            },
+            tetrislogic.State.PAUSED: {
+                getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.resume,
+                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+            },
+            tetrislogic.State.OVER: {
+                getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
+                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+            }
+        }
+
+        controls_text = "\n\n\nCONTROLS\n\n" + "\n".join(
+            "{:<16s}{:>6s}".format(key, action)
+            for key, action in tuple(self.conf["KEYBOARD"].items()) + (("QUIT", "ALT+F4"),)
+        ) + "\n\n\n"
+        self.start_text = "TETRARCADE" + controls_text + "PRESS [{}] TO START".format(
+            self.conf["KEYBOARD"]["start"]
+        )
+        self.pause_text = "PAUSE" + controls_text + "PRESS [{}] TO RESUME".format(
+            self.conf["KEYBOARD"]["pause"]
+        )
+        self.game_over_text = """GAME
+        OVER
+        
+        PRESS
+        [{}]
+        TO PLAY
+        AGAIN""".format(
+            self.conf["KEYBOARD"]["start"]
+        )
 
     def new_game(self):
         self.highlight_texts = []
@@ -261,7 +284,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
-                action = self.KEY_MAP[self.state][key_or_modifier]
+                action = self.key_map[self.state][key_or_modifier]
             except KeyError:
                 pass
             else:
@@ -270,7 +293,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
     def on_key_release(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
             try:
-                action = self.KEY_MAP[self.state][key_or_modifier]
+                action = self.key_map[self.state][key_or_modifier]
             except KeyError:
                 pass
             else:
@@ -344,10 +367,10 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 )
 
         highlight_text = {
-            tetrislogic.State.STARTING: START_TEXT,
+            tetrislogic.State.STARTING: self.start_text,
             tetrislogic.State.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
-            tetrislogic.State.PAUSED: PAUSE_TEXT,
-            tetrislogic.State.OVER: GAME_OVER_TEXT
+            tetrislogic.State.PAUSED: self.pause_text,
+            tetrislogic.State.OVER: self.game_over_text
         }.get(self.state, "")
         if highlight_text:
             arcade.draw_text(
@@ -435,12 +458,14 @@ High score could not be saved:
         else:
             arcade.unschedule(_task)
         arcade.schedule(_task, period)
-
+        
+    def on_close(self):
+        self.save_high_score()
+        super().on_close()
 
 def main():
-    tetrarcade = TetrArcade()
+    TetrArcade()
     arcade.run()
-    tetrarcade.save_high_score()
 
 if __name__ == "__main__":
     main()
