@@ -53,6 +53,7 @@ else:
     USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
 USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
 HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
+CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
@@ -391,7 +392,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
     def load_high_score(self):
         try:
             with open(HIGH_SCORE_PATH, "r") as f:
-               self.high_score = int(f.read())
+               self.high_score = int(f.read()) ^ CRYPT_KEY
         except:
             self.high_score = 0
 
@@ -400,7 +401,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             if not os.path.exists(USER_PROFILE_DIR):
                 os.makedirs(USER_PROFILE_DIR)
             with open(HIGH_SCORE_PATH, mode='w') as f:
-                f.write(str(self.high_score))
+                f.write(str(self.high_score ^ CRYPT_KEY))
         except Exception as e:
             sys.exit(
                 """High score: {:n}
