@@ -3,6 +3,7 @@ import sys
 import locale
 import time
 import os
+
 try:
     import configparser
 except ImportError:
@@ -43,20 +44,24 @@ MATRIX_BG_ALPHA = 100
 WINDOW_BG_PATH = "images/bg.jpg"
 MATRIX_SPRITE_PATH = "images/matrix.png"
 MINOES_SPRITES_PATHS = {
-    "orange":  "images/orange_mino.png",
-    "blue":    "images/blue_mino.png",
-    "yellow":  "images/yellow_mino.png",
-    "cyan":    "images/cyan_mino.png",
-    "green":   "images/green_mino.png",
-    "red":     "images/red_mino.png",
-    "magenta": "images/magenta_mino.png"
+    "orange": "images/orange_mino.png",
+    "blue": "images/blue_mino.png",
+    "yellow": "images/yellow_mino.png",
+    "cyan": "images/cyan_mino.png",
+    "green": "images/green_mino.png",
+    "red": "images/red_mino.png",
+    "magenta": "images/magenta_mino.png",
 }
 
 # User profile path
 if sys.platform == "win32":
-    USER_PROFILE_DIR = os.environ.get("appdata", os.path.expanduser("~\Appdata\Roaming"))
+    USER_PROFILE_DIR = os.environ.get(
+        "appdata", os.path.expanduser("~\Appdata\Roaming")
+    )
 else:
-    USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    USER_PROFILE_DIR = os.environ.get(
+        "XDG_DATA_HOME", os.path.expanduser("~/.local/share")
+    )
 USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
 HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
 CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
@@ -72,7 +77,6 @@ HIGHLIGHT_TEXT_SIZE = 20
 
 
 class MinoSprite(arcade.Sprite):
-
     def __init__(self, mino, window, alpha):
         super().__init__(MINOES_SPRITES_PATHS[mino.color], window.scale)
         self.alpha = alpha
@@ -80,12 +84,11 @@ class MinoSprite(arcade.Sprite):
 
     def set_position(self, x, y):
         size = MINO_SIZE * self.scale
-        self.left   = self.window.matrix_bg.left   + x*size
-        self.bottom = self.window.matrix_bg.bottom + y*size
+        self.left = self.window.matrix_bg.left + x * size
+        self.bottom = self.window.matrix_bg.bottom + y * size
 
 
 class MinoesSprites(arcade.SpriteList):
-
     def resize(self, scale):
         for sprite in self:
             sprite.scale = scale
@@ -93,7 +96,6 @@ class MinoesSprites(arcade.SpriteList):
 
 
 class TetrominoSprites(MinoesSprites):
-
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
@@ -114,7 +116,6 @@ class TetrominoSprites(MinoesSprites):
 
 
 class MatrixSprites(MinoesSprites):
-
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
@@ -129,9 +130,8 @@ class MatrixSprites(MinoesSprites):
 
 
 class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
-
     def __init__(self):
-        locale.setlocale(locale.LC_ALL, '')
+        locale.setlocale(locale.LC_ALL, "")
         self.highlight_texts = []
         self.tasks = {}
 
@@ -149,13 +149,14 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         super().__init__()
         arcade.Window.__init__(
             self,
-            width = self.init_width,
-            height = self.init_height,
-            title = WINDOW_TITLE,
-            resizable = True,
-            antialiasing = False,
-            fullscreen = self.init_fullscreen
+            width=self.init_width,
+            height=self.init_height,
+            title=WINDOW_TITLE,
+            resizable=True,
+            antialiasing=False,
+            fullscreen=self.init_fullscreen,
         )
+
         arcade.set_background_color(BG_COLOR)
         self.set_minimum_size(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
@@ -172,7 +173,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.conf["WINDOW"] = {
             "width": WINDOW_WIDTH,
             "height": WINDOW_HEIGHT,
-            "fullscreen": False
+            "fullscreen": False,
         }
         self.conf["KEYBOARD"] = {
             "start": "ENTER",
@@ -184,12 +185,12 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             "rotate counter": "Z",
             "hold": "C",
             "pause": "ESCAPE",
-            "fullscreen": "F11"
+            "fullscreen": "F11",
         }
         self.load_conf()
         if not os.path.exists(USER_PROFILE_DIR):
             os.makedirs(USER_PROFILE_DIR)
-        with open(CONF_PATH, 'w') as f:
+        with open(CONF_PATH, "w") as f:
             self.conf.write(f)
 
     def load_conf(self):
@@ -200,38 +201,61 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.key_map = {
             tetrislogic.State.STARTING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
-                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["fullscreen"]
+                ): self.toggle_fullscreen,
             },
             tetrislogic.State.PLAYING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["move left"]): self.move_left,
-                getattr(arcade.key, self.conf["KEYBOARD"]["move right"]): self.move_right,
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["move right"]
+                ): self.move_right,
                 getattr(arcade.key, self.conf["KEYBOARD"]["soft drop"]): self.soft_drop,
                 getattr(arcade.key, self.conf["KEYBOARD"]["hard drop"]): self.hard_drop,
-                getattr(arcade.key, self.conf["KEYBOARD"]["rotate clockwise"]): self.rotate_clockwise,
-                getattr(arcade.key, self.conf["KEYBOARD"]["rotate counter"]): self.rotate_counter,
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["rotate clockwise"]
+                ): self.rotate_clockwise,
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["rotate counter"]
+                ): self.rotate_counter,
                 getattr(arcade.key, self.conf["KEYBOARD"]["hold"]): self.swap,
                 getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.pause,
-                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["fullscreen"]
+                ): self.toggle_fullscreen,
             },
             tetrislogic.State.PAUSED: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.resume,
-                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["fullscreen"]
+                ): self.toggle_fullscreen,
             },
             tetrislogic.State.OVER: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
-                getattr(arcade.key, self.conf["KEYBOARD"]["fullscreen"]): self.toggle_fullscreen
-            }
+                getattr(
+                    arcade.key, self.conf["KEYBOARD"]["fullscreen"]
+                ): self.toggle_fullscreen,
+            },
         }
 
-        controls_text = "\n\n\nCONTROLS\n\n" + "\n".join(
-            "{:<16s}{:>6s}".format(key, action)
-            for key, action in tuple(self.conf["KEYBOARD"].items()) + (("QUIT", "ALT+F4"),)
-        ) + "\n\n\n"
-        self.start_text = "TETRARCADE" + controls_text + "PRESS [{}] TO START".format(
-            self.conf["KEYBOARD"]["start"]
+        controls_text = (
+            "\n\n\nCONTROLS\n\n"
+            + "\n".join(
+                "{:<16s}{:>6s}".format(key, action)
+                for key, action in tuple(self.conf["KEYBOARD"].items())
+                + (("QUIT", "ALT+F4"),)
+            )
+            + "\n\n\n"
         )
-        self.pause_text = "PAUSE" + controls_text + "PRESS [{}] TO RESUME".format(
-            self.conf["KEYBOARD"]["pause"]
+        self.start_text = (
+            "TETRARCADE"
+            + controls_text
+            + "PRESS [{}] TO START".format(self.conf["KEYBOARD"]["start"])
+        )
+        self.pause_text = (
+            "PAUSE"
+            + controls_text
+            + "PRESS [{}] TO RESUME".format(self.conf["KEYBOARD"]["pause"])
         )
         self.game_over_text = """GAME
 OVER
@@ -330,65 +354,59 @@ AGAIN""".format(
             t = time.localtime(self.time)
             font_size = STATS_TEXT_SIZE * self.scale
             for y, text in enumerate(
-                (
-                    "TIME",
-                    "LINES",
-                    "GOAL",
-                    "LEVEL",
-                    "HIGH SCORE",
-                    "SCORE"
-                )
+                ("TIME", "LINES", "GOAL", "LEVEL", "HIGH SCORE", "SCORE")
             ):
                 arcade.draw_text(
-                    text = text,
-                    start_x = self.matrix_bg.left - self.scale*(STATS_TEXT_MARGIN + STATS_TEXT_WIDTH),
-                    start_y = self.matrix_bg.bottom + 1.5*(2*y+1)*font_size,
-                    color = TEXT_COLOR,
-                    font_size = font_size,
-                    align = 'right',
-                    font_name = FONT_NAME,
-                    anchor_x = 'left'
+                    text=text,
+                    start_x=self.matrix_bg.left
+                    - self.scale * (STATS_TEXT_MARGIN + STATS_TEXT_WIDTH),
+                    start_y=self.matrix_bg.bottom + 1.5 * (2 * y + 1) * font_size,
+                    color=TEXT_COLOR,
+                    font_size=font_size,
+                    align="right",
+                    font_name=FONT_NAME,
+                    anchor_x="left",
                 )
             for y, text in enumerate(
                 (
-                    "{:02d}:{:02d}:{:02d}".format(
-                        t.tm_hour-1, t.tm_min, t.tm_sec
-                    ),
+                    "{:02d}:{:02d}:{:02d}".format(t.tm_hour - 1, t.tm_min, t.tm_sec),
                     "{:n}".format(self.nb_lines_cleared),
                     "{:n}".format(self.goal),
                     "{:n}".format(self.level),
                     "{:n}".format(self.high_score),
-                    "{:n}".format(self.score)
+                    "{:n}".format(self.score),
                 )
             ):
                 arcade.draw_text(
-                    text = text,
-                    start_x = self.matrix_bg.left - STATS_TEXT_MARGIN*self.scale,
-                    start_y = self.matrix_bg.bottom + 3*y*font_size,
-                    color = TEXT_COLOR,
-                    font_size = font_size,
-                    align = 'right',
-                    font_name = FONT_NAME,
-                    anchor_x = 'right'
+                    text=text,
+                    start_x=self.matrix_bg.left - STATS_TEXT_MARGIN * self.scale,
+                    start_y=self.matrix_bg.bottom + 3 * y * font_size,
+                    color=TEXT_COLOR,
+                    font_size=font_size,
+                    align="right",
+                    font_name=FONT_NAME,
+                    anchor_x="right",
                 )
 
         highlight_text = {
             tetrislogic.State.STARTING: self.start_text,
-            tetrislogic.State.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
+            tetrislogic.State.PLAYING: self.highlight_texts[0]
+            if self.highlight_texts
+            else "",
             tetrislogic.State.PAUSED: self.pause_text,
-            tetrislogic.State.OVER: self.game_over_text
+            tetrislogic.State.OVER: self.game_over_text,
         }.get(self.state, "")
         if highlight_text:
             arcade.draw_text(
-                text = highlight_text,
-                start_x = self.matrix_bg.center_x,
-                start_y = self.matrix_bg.center_y,
-                color = HIGHLIGHT_TEXT_COLOR,
-                font_size = HIGHLIGHT_TEXT_SIZE * self.scale,
-                align = 'center',
-                font_name = FONT_NAME,
-                anchor_x = 'center',
-                anchor_y = 'center'
+                text=highlight_text,
+                start_x=self.matrix_bg.center_x,
+                start_y=self.matrix_bg.center_y,
+                color=HIGHLIGHT_TEXT_COLOR,
+                font_size=HIGHLIGHT_TEXT_SIZE * self.scale,
+                align="center",
+                font_name=FONT_NAME,
+                anchor_x="center",
+                anchor_y="center",
             )
 
     def on_hide(self):
@@ -401,9 +419,9 @@ AGAIN""".format(
         super().on_resize(width, height)
         center_x = width / 2
         center_y = height / 2
-        self.scale = min(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+        self.scale = min(width / WINDOW_WIDTH, height / WINDOW_HEIGHT)
 
-        self.bg.scale = max(width/WINDOW_WIDTH, height/WINDOW_HEIGHT)
+        self.bg.scale = max(width / WINDOW_WIDTH, height / WINDOW_HEIGHT)
         self.bg.center_x = center_x
         self.bg.center_y = center_y
 
@@ -411,7 +429,7 @@ AGAIN""".format(
         self.matrix_bg.center_x = center_x
         self.matrix_bg.center_y = center_y
         self.matrix_bg.left = int(self.matrix_bg.left)
-        self.matrix_bg.top  = int(self.matrix_bg.top)
+        self.matrix_bg.top = int(self.matrix_bg.top)
 
         self.held_bg.scale = self.scale
         self.held_bg.right = self.matrix_bg.left
@@ -439,14 +457,17 @@ AGAIN""".format(
         try:
             if not os.path.exists(USER_PROFILE_DIR):
                 os.makedirs(USER_PROFILE_DIR)
-            with open(HIGH_SCORE_PATH, mode='wb') as f:
+            with open(HIGH_SCORE_PATH, mode="wb") as f:
                 crypted_high_score = super().save_high_score()
                 f.write(crypted_high_score)
         except Exception as e:
             sys.exit(
                 """High score: {:n}
 High score could not be saved:
-""".format(self.high_score) + str(e)
+""".format(
+                    self.high_score
+                )
+                + str(e)
             )
 
     def start(self, task, period):
@@ -477,9 +498,11 @@ High score could not be saved:
         self.save_high_score()
         super().on_close()
 
+
 def main():
     TetrArcade()
     arcade.run()
+
 
 if __name__ == "__main__":
     main()

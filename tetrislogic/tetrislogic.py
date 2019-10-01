@@ -5,10 +5,16 @@ import pickle
 from .utils import Coord, Movement, Rotation, T_Spin, Line
 from .tetromino import Tetromino, T, I
 from .consts import (
-    NB_LINES, NB_COLS, NB_NEXT,
-    LOCK_DELAY, FALL_DELAY,
-    AUTOREPEAT_DELAY, AUTOREPEAT_PERIOD,
-    CURRENT_COORD, NEXT_COORDS, HELD_COORD
+    NB_LINES,
+    NB_COLS,
+    NB_NEXT,
+    LOCK_DELAY,
+    FALL_DELAY,
+    AUTOREPEAT_DELAY,
+    AUTOREPEAT_PERIOD,
+    CURRENT_COORD,
+    NEXT_COORDS,
+    HELD_COORD,
 )
 
 
@@ -19,22 +25,17 @@ CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 class State:
 
     STARTING = "STARTING"
-    PLAYING  = "PLAYING"
-    PAUSED   = "PAUSED"
-    OVER     = "OVER"
+    PLAYING = "PLAYING"
+    PAUSED = "PAUSED"
+    OVER = "OVER"
 
 
 class Matrix(list):
-
     def cell_is_free(self, coord):
-        return (
-            0 <= coord.x < NB_COLS
-            and 0 <= coord.y
-            and not self[coord.y][coord.x]
-        )
+        return 0 <= coord.x < NB_COLS and 0 <= coord.y and not self[coord.y][coord.x]
 
 
-class TetrisLogic():
+class TetrisLogic:
 
     NB_LINES = NB_LINES
     NB_COLS = NB_COLS
@@ -85,7 +86,7 @@ class TetrisLogic():
         self.fall_delay = self.FALL_DELAY
 
         self.matrix.clear()
-        for y in range(self.NB_LINES+3):
+        for y in range(self.NB_LINES + 3):
             self.append_new_line_to_matrix()
         self.next = [self.new_tetromino() for n in range(self.NB_NEXT)]
         self.held = None
@@ -107,9 +108,9 @@ class TetrisLogic():
         self.level += 1
         self.goal += 5 * self.level
         if self.level <= 20:
-            self.fall_delay = pow(0.8 - ((self.level-1)*0.007), self.level-1)
+            self.fall_delay = pow(0.8 - ((self.level - 1) * 0.007), self.level - 1)
         if self.level > 15:
-            self.lock_delay = 0.5 * pow(0.9, self.level-15)
+            self.lock_delay = 0.5 * pow(0.9, self.level - 15)
         self.show_text("LEVEL\n{:n}".format(self.level))
         self.restart(self.fall, self.fall_delay)
 
@@ -122,13 +123,10 @@ class TetrisLogic():
         self.move_ghost()
         self.next.append(self.new_tetromino())
         self.next[-1].coord = self.NEXT_COORDS[-1]
-        for tetromino, coord in zip (self.next, self.NEXT_COORDS):
+        for tetromino, coord in zip(self.next, self.NEXT_COORDS):
             tetromino.coord = coord
 
-        if not self.can_move(
-            self.current.coord,
-            (mino.coord for mino in self.current)
-        ):
+        if not self.can_move(self.current.coord, (mino.coord for mino in self.current)):
             self.game_over()
 
     def move_left(self):
@@ -148,8 +146,7 @@ class TetrisLogic():
         for ghost_mino, current_mino in zip(self.ghost, self.current):
             ghost_mino.coord = current_mino.coord
         while self.can_move(
-            self.ghost.coord + Movement.DOWN,
-            (mino.coord for mino in self.ghost)
+            self.ghost.coord + Movement.DOWN, (mino.coord for mino in self.ghost)
         ):
             self.ghost.coord += Movement.DOWN
 
@@ -169,10 +166,7 @@ class TetrisLogic():
 
     def move(self, movement, prelock=True):
         potential_coord = self.current.coord + movement
-        if self.can_move(
-            potential_coord,
-            (mino.coord for mino in self.current)
-        ):
+        if self.can_move(potential_coord, (mino.coord for mino in self.current)):
             if self.current.prelocked:
                 self.restart(self.lock, self.lock_delay)
             self.current.coord = potential_coord
@@ -181,22 +175,18 @@ class TetrisLogic():
             self.move_ghost()
             return True
         else:
-            if (
-                prelock and not self.current.prelocked
-                and movement == Movement.DOWN
-            ):
+            if prelock and not self.current.prelocked and movement == Movement.DOWN:
                 self.current.prelocked = True
                 self.start(self.lock, self.lock_delay)
             return False
 
     def rotate(self, rotation):
         rotated_coords = tuple(
-            Coord(rotation*mino.coord.y, -rotation*mino.coord.x)
+            Coord(rotation * mino.coord.y, -rotation * mino.coord.x)
             for mino in self.current
         )
         for rotation_point, liberty_degree in enumerate(
-            self.current.SRS[rotation][self.current.orientation],
-            start = 1
+            self.current.SRS[rotation][self.current.orientation], start=1
         ):
             potential_coord = self.current.coord + liberty_degree
             if self.can_move(potential_coord, rotated_coords):
@@ -205,9 +195,7 @@ class TetrisLogic():
                 self.current.coord = potential_coord
                 for mino, coord in zip(self.current, rotated_coords):
                     mino.coord = coord
-                self.current.orientation = (
-                    (self.current.orientation + rotation) % 4
-                )
+                self.current.orientation = (self.current.orientation + rotation) % 4
                 self.current.last_rotation_point = rotation_point
                 self.move_ghost()
                 return True
@@ -219,7 +207,7 @@ class TetrisLogic():
         {LINES_CLEAR_NAME: "SINGLE", T_Spin.NONE: 1, T_Spin.MINI: 2, T_Spin.T_SPIN: 8},
         {LINES_CLEAR_NAME: "DOUBLE", T_Spin.NONE: 3, T_Spin.T_SPIN: 12},
         {LINES_CLEAR_NAME: "TRIPLE", T_Spin.NONE: 5, T_Spin.T_SPIN: 16},
-        {LINES_CLEAR_NAME: "TETRIS", T_Spin.NONE: 8}
+        {LINES_CLEAR_NAME: "TETRIS", T_Spin.NONE: 8},
     )
 
     def lock(self):
@@ -228,8 +216,7 @@ class TetrisLogic():
 
         # Piece unlocked
         if self.can_move(
-            self.current.coord + Movement.DOWN,
-            (mino.coord for mino in self.current)
+            self.current.coord + Movement.DOWN, (mino.coord for mino in self.current)
         ):
             return
 
@@ -246,17 +233,12 @@ class TetrisLogic():
             self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         # T-Spin
-        if (
-            type(self.current) == T
-            and self.current.last_rotation_point is not None
-        ):
+        if type(self.current) == T and self.current.last_rotation_point is not None:
             a = self.is_t_slot(0)
             b = self.is_t_slot(1)
             c = self.is_t_slot(3)
             d = self.is_t_slot(2)
-            if self.current.last_rotation_point == 5 or (
-                a and b and (c or d)
-            ):
+            if self.current.last_rotation_point == 5 or (a and b and (c or d)):
                 t_spin = T_Spin.T_SPIN
             elif c and d and (a or b):
                 t_spin = T_Spin.MINI
@@ -267,8 +249,8 @@ class TetrisLogic():
 
         for mino in self.current:
             coord = mino.coord + self.current.coord
-            del(mino.coord)
-            if coord.y <= self.NB_LINES+3:
+            del mino.coord
+            if coord.y <= self.NB_LINES + 3:
                 self.matrix[coord.y][coord.x] = mino
 
         # Clear complete lines
@@ -302,7 +284,7 @@ class TetrisLogic():
             self.show_text("\n".join(lock_strings))
 
         if self.combo >= 1:
-            ds = (20 if nb_lines_cleared==1 else 50) * self.combo * self.level
+            ds = (20 if nb_lines_cleared == 1 else 50) * self.combo * self.level
             lock_score += ds
             self.show_text("COMBO x{:n}\n{:n}".format(self.combo, ds))
 
@@ -315,21 +297,16 @@ class TetrisLogic():
 
     def can_move(self, potential_coord, minoes_coords):
         return all(
-            self.matrix.cell_is_free(potential_coord+mino_coord)
+            self.matrix.cell_is_free(potential_coord + mino_coord)
             for mino_coord in minoes_coords
         )
 
-    T_SLOT_COORDS = (
-        Coord(-1,  1),
-        Coord( 1,  1),
-        Coord(-1,  1),
-        Coord(-1, -1)
-    )
+    T_SLOT_COORDS = (Coord(-1, 1), Coord(1, 1), Coord(-1, 1), Coord(-1, -1))
 
     def is_t_slot(self, n):
-        t_slot_coord = self.current.coord + self.T_SLOT_COORDS[
-            (self.current.orientation + n) % 4
-        ]
+        t_slot_coord = (
+            self.current.coord + self.T_SLOT_COORDS[(self.current.orientation + n) % 4]
+        )
         return not self.matrix.cell_is_free(t_slot_coord)
 
     def swap(self):

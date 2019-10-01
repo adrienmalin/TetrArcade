@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from .utils import Coord, Rotation
 
-class Mino:
 
+class Mino:
     def __init__(self, color, coord):
         self.color = color
         self.coord = coord
 
 
 class MetaTetromino(type):
-
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
         Tetromino.shapes.append(cls)
@@ -35,10 +34,7 @@ class Tetromino(list):
     }
 
     def __init__(self):
-        super().__init__(
-            Mino(self.MINOES_COLOR, coord)
-            for coord in self.MINOES_COORDS
-        )
+        super().__init__(Mino(self.MINOES_COLOR, coord) for coord in self.MINOES_COORDS)
         self.orientation = 0
         self.last_rotation_point = None
         self.hold_enabled = True
@@ -46,6 +42,7 @@ class Tetromino(list):
 
     def ghost(self):
         return type(self)()
+
 
 class O(Tetromino, metaclass=MetaTetromino):
 
