@@ -156,7 +156,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
         self.KEY_MAP = {
             tetrislogic.State.STARTING: {
                 arcade.key.ENTER:     self.new_game,
-                arcade.key.F11:       self.toogle_fullscreen
+                arcade.key.F11:       self.toggle_fullscreen
             },
             tetrislogic.State.PLAYING: {
                 arcade.key.LEFT:      self.move_left,
@@ -180,16 +180,16 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 arcade.key.NUM_0:     self.swap,
                 arcade.key.ESCAPE:    self.pause,
                 arcade.key.F1:        self.pause,
-                arcade.key.F11:       self.toogle_fullscreen
+                arcade.key.F11:       self.toggle_fullscreen
             },
             tetrislogic.State.PAUSED: {
                 arcade.key.ESCAPE:    self.resume,
                 arcade.key.F1:        self.resume,
-                arcade.key.F11:       self.toogle_fullscreen
+                arcade.key.F11:       self.toggle_fullscreen
             },
             tetrislogic.State.OVER: {
                 arcade.key.ENTER:     self.new_game,
-                arcade.key.F11:       self.toogle_fullscreen
+                arcade.key.F11:       self.toggle_fullscreen
             }
         }
 
@@ -234,7 +234,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             if tetromino:
                 tetromino.sprites.resize(self.scale)
 
-    def toogle_fullscreen(self):
+    def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
 
     def new_game(self):
