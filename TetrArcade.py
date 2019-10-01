@@ -256,6 +256,7 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
     def lock(self):
         self.current.sprites.refresh()
         super().lock()
+        self.current.sprites.set_alpha(NORMAL_ALPHA)
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
