@@ -11,9 +11,9 @@ except ImportError:
 
 try:
     import arcade
-except ImportError:
-    sys.exit(
-        """This game require arcade library.
+except ImportError as e:
+    sys.exit(str(e) + """
+This game require arcade library.
 You can install it with:
 python -m pip install --user arcade"""
     )

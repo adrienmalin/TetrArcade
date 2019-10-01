@@ -21,7 +21,7 @@ setup(
     )],
     options={
         "build_exe": {
-            "packages": ["arcade"],
+            "packages": ["arcade", "pyglet"],
             "excludes": ["tkinter"],
             "include_files": "res",
             "silent": True
