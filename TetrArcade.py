@@ -255,7 +255,10 @@ AGAIN""".format(
     def move(self, movement, prelock=True):
         moved = super().move(movement, prelock)
         if self.current.prelocked:
-            self.current.sprites.set_alpha(PRELOCKED_ALPHA)
+            alpha = PRELOCKED_ALPHA
+        else:
+            alpha = NORMAL_ALPHA
+        self.current.sprites.set_alpha(alpha)
         if moved:
             size = MINO_SIZE * self.scale
             change_x = movement.x * size

@@ -223,20 +223,15 @@ class TetrisLogic():
     )
 
     def lock(self):
+        self.current.prelocked = False
+        self.stop(self.lock)
+
         # Piece unlocked
         if self.can_move(
             self.current.coord + Movement.DOWN,
             (mino.coord for mino in self.current)
         ):
-            self.restart(self.lock, self.lock_delay)
             return
-
-        # Start lock
-        self.current.prelocked = False
-        self.stop(self.lock)
-        if self.pressed_actions:
-            self.auto_repeat = False
-            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         # Game over
         if all(
@@ -245,6 +240,10 @@ class TetrisLogic():
         ):
             self.game_over()
             return
+
+        if self.pressed_actions:
+            self.auto_repeat = False
+            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         # T-Spin
         if (
