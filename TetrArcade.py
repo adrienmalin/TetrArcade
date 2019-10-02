@@ -92,6 +92,7 @@ class MinoSprite(arcade.Sprite):
         self.set_texture(0)
 
     def refresh(self, x, y, prelocked=False):
+        self.scale = self.window.scale
         size = MINO_SIZE * self.scale
         self.left = self.window.matrix_bg.left + x * size
         self.bottom = self.window.matrix_bg.bottom + y * size
