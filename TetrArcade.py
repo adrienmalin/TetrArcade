@@ -4,10 +4,7 @@ import locale
 import time
 import os
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 try:
     import arcade
@@ -482,8 +479,11 @@ High score could not be saved:
 
 
 def main():
-    TetrArcade()
-    arcade.run()
+    try:
+        TetrArcade()
+        arcade.run()
+    except Exception as e:
+        sys.exit(e)
 
 
 if __name__ == "__main__":
