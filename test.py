@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from TetrArcade import TetrArcade, tetrislogic
+from TetrArcade import TetrArcade, State
 
 game = TetrArcade()
 game.new_game()
@@ -11,5 +11,5 @@ game.rotate_counter()
 for i in range(12):
     game.soft_drop()
 game.on_draw()
-while game.state != tetrislogic.State.OVER:
+while game.state != State.OVER:
     game.hard_drop()

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .utils import Coord, Rotation
+from .utils import Coord, Rotation, Color
 
 
 class Mino:
@@ -51,7 +51,7 @@ class O(Tetromino, metaclass=MetaTetromino):
         Rotation.COUNTER: (tuple(), tuple(), tuple(), tuple()),
     }
     MINOES_COORDS = (Coord(0, 0), Coord(1, 0), Coord(0, 1), Coord(1, 1))
-    MINOES_COLOR = "yellow"
+    MINOES_COLOR = Color.YELLOW
 
     def rotate(self, direction):
         return False
@@ -74,34 +74,34 @@ class I(Tetromino, metaclass=MetaTetromino):
         ),
     }
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(2, 0))
-    MINOES_COLOR = "cyan"
+    MINOES_COLOR = Color.CYAN
 
 
 class T(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
-    MINOES_COLOR = "magenta"
+    MINOES_COLOR = Color.MAGENTA
 
 
 class L(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
-    MINOES_COLOR = "orange"
+    MINOES_COLOR = Color.ORANGE
 
 
 class J(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
-    MINOES_COLOR = "blue"
+    MINOES_COLOR = Color.BLUE
 
 
 class S(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
-    MINOES_COLOR = "green"
+    MINOES_COLOR = Color.GREEN
 
 
 class Z(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
-    MINOES_COLOR = "red"
+    MINOES_COLOR = Color.RED

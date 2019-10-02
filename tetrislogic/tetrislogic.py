@@ -2,7 +2,7 @@
 import random
 import pickle
 
-from .utils import Coord, Movement, Rotation, T_Spin, Line
+from .utils import Coord, Movement, Rotation, T_Spin
 from .tetromino import Tetromino, T, I
 from .consts import (
     NB_LINES,
@@ -102,7 +102,7 @@ class TetrisLogic:
         return self.random_bag.pop()()
 
     def append_new_line_to_matrix(self):
-        self.matrix.append(Line(None for x in range(self.NB_COLS)))
+        self.matrix.append([None for x in range(self.NB_COLS)])
 
     def new_level(self):
         self.level += 1
@@ -145,9 +145,7 @@ class TetrisLogic:
         self.ghost.coord = self.current.coord
         for ghost_mino, current_mino in zip(self.ghost, self.current):
             ghost_mino.coord = current_mino.coord
-        while self.can_move(
-            self.ghost.coord + Movement.DOWN, (mino.coord for mino in self.ghost)
-        ):
+        while self.can_move(self.ghost.coord + Movement.DOWN, (mino.coord for mino in self.ghost)):
             self.ghost.coord += Movement.DOWN
 
     def soft_drop(self):
@@ -181,13 +179,8 @@ class TetrisLogic:
             return False
 
     def rotate(self, rotation):
-        rotated_coords = tuple(
-            Coord(rotation * mino.coord.y, -rotation * mino.coord.x)
-            for mino in self.current
-        )
-        for rotation_point, liberty_degree in enumerate(
-            self.current.SRS[rotation][self.current.orientation], start=1
-        ):
+        rotated_coords = tuple(Coord(rotation * mino.coord.y, -rotation * mino.coord.x) for mino in self.current)
+        for rotation_point, liberty_degree in enumerate(self.current.SRS[rotation][self.current.orientation], start=1):
             potential_coord = self.current.coord + liberty_degree
             if self.can_move(potential_coord, rotated_coords):
                 if self.current.prelocked:
@@ -215,16 +208,11 @@ class TetrisLogic:
         self.stop(self.lock)
 
         # Piece unlocked
-        if self.can_move(
-            self.current.coord + Movement.DOWN, (mino.coord for mino in self.current)
-        ):
+        if self.can_move(self.current.coord + Movement.DOWN, (mino.coord for mino in self.current)):
             return
 
         # Game over
-        if all(
-            (mino.coord + self.current.coord).y >= self.NB_LINES
-            for mino in self.current
-        ):
+        if all((mino.coord + self.current.coord).y >= self.NB_LINES for mino in self.current):
             self.game_over()
             return
 
@@ -296,17 +284,12 @@ class TetrisLogic:
             self.new_current()
 
     def can_move(self, potential_coord, minoes_coords):
-        return all(
-            self.matrix.cell_is_free(potential_coord + mino_coord)
-            for mino_coord in minoes_coords
-        )
+        return all(self.matrix.cell_is_free(potential_coord + mino_coord) for mino_coord in minoes_coords)
 
     T_SLOT_COORDS = (Coord(-1, 1), Coord(1, 1), Coord(-1, 1), Coord(-1, -1))
 
     def is_t_slot(self, n):
-        t_slot_coord = (
-            self.current.coord + self.T_SLOT_COORDS[(self.current.orientation + n) % 4]
-        )
+        t_slot_coord = self.current.coord + self.T_SLOT_COORDS[(self.current.orientation + n) % 4]
         return not self.matrix.cell_is_free(t_slot_coord)
 
     def swap(self):

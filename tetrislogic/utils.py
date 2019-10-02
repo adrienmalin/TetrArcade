@@ -28,5 +28,12 @@ class T_Spin:
     T_SPIN = "T-SPIN"
 
 
-class Line(list):
-    pass
+class Color:
+
+    BLUE = 0
+    CYAN = 1
+    GREEN = 2
+    MAGENTA = 3
+    ORANGE = 4
+    RED = 5
+    YELLOW = 6
