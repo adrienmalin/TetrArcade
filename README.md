@@ -33,5 +33,5 @@ Use key name from [arcade.key package](http://arcade.academy/arcade.key.html).
 
 ```shell
 python -m pip install -r build-requirements.txt
-python setup.py build
+python setup.py bdist
 ```

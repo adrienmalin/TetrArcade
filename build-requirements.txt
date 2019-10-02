@@ -1,1 +1,1 @@
-cx-freeze
+arcade cx-freeze
