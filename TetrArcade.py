@@ -203,6 +203,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.init_height = int(self.conf["WINDOW"]["height"])
         self.init_fullscreen = self.conf["WINDOW"].getboolean("fullscreen")
 
+        for action, key in self.conf["KEYBOARD"].items():
+            self.conf["KEYBOARD"][action] = key.upper()
         self.key_map = {
             State.STARTING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
