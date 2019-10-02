@@ -190,6 +190,10 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
             "pause": "ESCAPE",
             "fullscreen": "F11",
         }
+        self.conf["AUTO-REPEAT"] = {
+            "delay": 0.3,
+            "period": 0.01
+            }
         self.load_conf()
         if not os.path.exists(USER_PROFILE_DIR):
             os.makedirs(USER_PROFILE_DIR)
@@ -240,6 +244,9 @@ class TetrArcade(tetrislogic.TetrisLogic, arcade.Window):
                 ): self.toggle_fullscreen,
             },
         }
+
+        self.AUTOREPEAT_DELAY = float(self.conf["AUTO-REPEAT"]["delay"])
+        self.AUTOREPEAT_PERIOD = float(self.conf["AUTO-REPEAT"]["period"])
 
         controls_text = (
             "\n\n\nCONTROLS\n\n"
