@@ -54,6 +54,7 @@ MINOES_SPRITES_PATHS = {
     "green": "res/green_mino.png",
     "red": "res/red_mino.png",
     "magenta": "res/magenta_mino.png",
+    "held": "res/held_mino.png"
 }
 
 # User profile path
@@ -81,7 +82,9 @@ HIGHLIGHT_TEXT_SIZE = 20
 
 class MinoSprite(arcade.Sprite):
     def __init__(self, mino, window, alpha):
-        super().__init__(MINOES_SPRITES_PATHS[mino.color], window.scale)
+        super().__init__()
+        self.append_texture(MINOES_SPRITES_PATHS[mino.color])
+        self.append_texture(MINOES_SPRITES_PATHS["held"])
         self.alpha = alpha
         self.window = window
 
@@ -101,6 +104,10 @@ class MinoesSprites(arcade.SpriteList):
 class TetrominoSprites(MinoesSprites):
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
+        self.preload_textures([
+            MINOES_SPRITES_PATHS[tetromino.MINOES_COLOR],
+            MINOES_SPRITES_PATHS["held"]
+        ])
         self.tetromino = tetromino
         self.alpha = alpha
         for mino in tetromino:
@@ -109,13 +116,13 @@ class TetrominoSprites(MinoesSprites):
 
     def refresh(self):
         if self.tetromino.prelocked:
-            alpha = PRELOCKED_ALPHA
+            texture = 1
         else:
-            alpha = self.alpha
+            texture = 0
         for mino in self.tetromino:
             coord = mino.coord + self.tetromino.coord
             mino.sprite.set_position(coord.x, coord.y)
-            mino.sprite.alpha = alpha
+            mino.sprite.set_texture(texture)
 
 
 class MatrixSprites(MinoesSprites):
