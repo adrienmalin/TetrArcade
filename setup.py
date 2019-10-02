@@ -35,7 +35,7 @@ options = {
 }
 setup(
     name = "TetrArcade",
-    version = "0.2-dev",
+    version = "0.2",
     description = "Tetris clone",
     author = "AdrienMalin",
     executables = [executable],
