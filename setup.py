@@ -14,15 +14,19 @@ setup(
     version="0.1",
     description="Tetris clone",
     author="adrienmalin",
-    executables=[Executable(script="TetrArcade.py", icon=icon, base=base)],
+    executables=[Executable(
+        script="TetrArcade.py",
+        icon=icon,
+        base=base,
+        shortcutDir="AdrienMalin",
+        shortcutName="TetrArcade"
+    )],
     options={
         "build_exe": {
             "packages": ["arcade", "pyglet"],
             "excludes": ["tkinter", "PyQt4", "PyQt5", "PySide", "PySide2"],
             "include_files": "res",
-            "silent": True,
-            "shortcutDir": "AdrienMalin",
-            "shortcutName": "TetrArcade"
+            "silent": True
         }
     },
 )
