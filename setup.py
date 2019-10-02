@@ -11,9 +11,9 @@ else:
 
 setup(
     name="TetrArcade",
-    version="0.1",
+    version="v0.1",
     description="Tetris clone",
-    author="adrienmalin",
+    author="AdrienMalin",
     executables=[Executable(
         script="TetrArcade.py",
         icon=icon,
@@ -24,7 +24,7 @@ setup(
     options={
         "build_exe": {
             "packages": ["arcade", "pyglet"],
-            "excludes": ["tkinter", "PyQt4", "PyQt5", "PySide", "PySide2"],
+            "excludes": ["tkinter", "PyQt4", "PyQt5", "PySide", "PySide2", "arcade.examples"],
             "include_files": "res",
             "silent": True
         }
