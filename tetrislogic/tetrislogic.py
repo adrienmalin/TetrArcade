@@ -363,7 +363,11 @@ class TetrisLogic:
         if action in self.autorepeatable_actions:
             self.auto_repeat = False
             self.pressed_actions.append(action)
-            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
+            if action == self.soft_drop:
+                delay = self.fall_delay / 20
+            else:
+                delay = self.AUTOREPEAT_DELAY
+            self.restart(self.repeat_action, delay)
 
     def repeat_action(self):
         if self.pressed_actions:
