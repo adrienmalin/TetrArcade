@@ -30,6 +30,6 @@ Use key name from [arcade.key package](http://arcade.academy/arcade.key.html).
 ## Build
 
 ```shell
-python -m pip install cx-freeze
+python -m pip install -r build-requirements.txt
 python setup.py build
 ```
