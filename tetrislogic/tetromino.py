@@ -44,7 +44,7 @@ class Tetromino(list):
         return type(self)()
 
 
-class O(Tetromino, metaclass=MetaTetromino):
+class O_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     SRS = {
         Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
@@ -57,7 +57,7 @@ class O(Tetromino, metaclass=MetaTetromino):
         return False
 
 
-class I(Tetromino, metaclass=MetaTetromino):
+class I_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     SRS = {
         Rotation.CLOCKWISE: (
@@ -77,31 +77,31 @@ class I(Tetromino, metaclass=MetaTetromino):
     MINOES_COLOR = Color.CYAN
 
 
-class T(Tetromino, metaclass=MetaTetromino):
+class T_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 0))
     MINOES_COLOR = Color.MAGENTA
 
 
-class L(Tetromino, metaclass=MetaTetromino):
+class L_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(1, 0), Coord(1, 1))
     MINOES_COLOR = Color.ORANGE
 
 
-class J(Tetromino, metaclass=MetaTetromino):
+class J_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(-1, 0), Coord(0, 0), Coord(1, 0))
     MINOES_COLOR = Color.BLUE
 
 
-class S(Tetromino, metaclass=MetaTetromino):
+class S_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 0), Coord(0, 0), Coord(0, 1), Coord(1, 1))
     MINOES_COLOR = Color.GREEN
 
 
-class Z(Tetromino, metaclass=MetaTetromino):
+class Z_Tetrimino(Tetromino, metaclass=MetaTetromino):
 
     MINOES_COORDS = (Coord(-1, 1), Coord(0, 1), Coord(0, 0), Coord(1, 0))
     MINOES_COLOR = Color.RED

@@ -3,7 +3,7 @@ import random
 import pickle
 
 from .utils import Coord, Movement, Rotation, T_Spin
-from .tetromino import Tetromino, T, I
+from .tetromino import Tetromino, T_Tetrimino, I_Tetrimino
 from .consts import (
     NB_LINES,
     NB_COLS,
@@ -30,9 +30,31 @@ class State:
     OVER = "OVER"
 
 
-class Matrix(list):
+class PieceContainer:
+
+    def __init__(self):
+        self.piece = None
+
+
+class HoldQueue(PieceContainer):
+    pass
+
+
+class Matrix(list, PieceContainer):
+
+    def __init__(self, *args, **kargs):
+        list.__init__(self, *args, **kargs)
+        PieceContainer.__init__(self)
+
     def cell_is_free(self, coord):
         return 0 <= coord.x < NB_COLS and 0 <= coord.y and not self[coord.y][coord.x]
+
+
+class NextQueue(PieceContainer):
+
+    def __init__(self):
+        super().__init__()
+        self.pieces = []
 
 
 class TetrisLogic:
@@ -52,11 +74,10 @@ class TetrisLogic:
     def __init__(self):
         self.load_high_score()
         self.state = State.STARTING
+        self.held = HoldQueue()
         self.matrix = Matrix()
-        self.next = []
-        self.current = None
-        self.ghost = None
-        self.held = None
+        self.matrix.ghost = None
+        self.next = NextQueue()
         self.time = 0
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
         self.pressed_actions = []
@@ -88,8 +109,8 @@ class TetrisLogic:
         self.matrix.clear()
         for y in range(self.NB_LINES + 3):
             self.append_new_line_to_matrix()
-        self.next = [self.new_tetromino() for n in range(self.NB_NEXT)]
-        self.held = None
+        self.next.pieces = [self.new_tetromino() for n in range(self.NB_NEXT)]
+        self.held.piece = None
         self.state = State.PLAYING
         self.start(self.update_time, 1)
 
@@ -113,20 +134,19 @@ class TetrisLogic:
             self.lock_delay = 0.5 * pow(0.9, self.level - 15)
         self.show_text("LEVEL\n{:n}".format(self.level))
         self.restart(self.fall, self.fall_delay)
+        self.new_matrix_piece()
 
-        self.new_current()
-
-    def new_current(self):
-        self.current = self.next.pop(0)
-        self.current.coord = self.CURRENT_COORD
-        self.ghost = self.current.ghost()
+    def new_matrix_piece(self):
+        self.matrix.piece = self.next.pieces.pop(0)
+        self.matrix.piece.coord = self.CURRENT_COORD
+        self.matrix.ghost = self.matrix.piece.ghost()
         self.move_ghost()
-        self.next.append(self.new_tetromino())
-        self.next[-1].coord = self.NEXT_COORDS[-1]
-        for tetromino, coord in zip(self.next, self.NEXT_COORDS):
+        self.next.pieces.append(self.new_tetromino())
+        self.next.pieces[-1].coord = self.NEXT_COORDS[-1]
+        for tetromino, coord in zip(self.next.pieces, self.NEXT_COORDS):
             tetromino.coord = coord
 
-        if not self.can_move(self.current.coord, (mino.coord for mino in self.current)):
+        if not self.can_move(self.matrix.piece.coord, (mino.coord for mino in self.matrix.piece)):
             self.game_over()
 
     def move_left(self):
@@ -142,11 +162,11 @@ class TetrisLogic:
         self.rotate(Rotation.COUNTER)
 
     def move_ghost(self):
-        self.ghost.coord = self.current.coord
-        for ghost_mino, current_mino in zip(self.ghost, self.current):
+        self.matrix.ghost.coord = self.matrix.piece.coord
+        for ghost_mino, current_mino in zip(self.matrix.ghost, self.matrix.piece):
             ghost_mino.coord = current_mino.coord
-        while self.can_move(self.ghost.coord + Movement.DOWN, (mino.coord for mino in self.ghost)):
-            self.ghost.coord += Movement.DOWN
+        while self.can_move(self.matrix.ghost.coord + Movement.DOWN, (mino.coord for mino in self.matrix.ghost)):
+            self.matrix.ghost.coord += Movement.DOWN
 
     def soft_drop(self):
         moved = self.move(Movement.DOWN)
@@ -163,33 +183,33 @@ class TetrisLogic:
         self.move(Movement.DOWN)
 
     def move(self, movement, prelock=True):
-        potential_coord = self.current.coord + movement
-        if self.can_move(potential_coord, (mino.coord for mino in self.current)):
-            if self.current.prelocked:
+        potential_coord = self.matrix.piece.coord + movement
+        if self.can_move(potential_coord, (mino.coord for mino in self.matrix.piece)):
+            if self.matrix.piece.prelocked:
                 self.restart(self.lock, self.lock_delay)
-            self.current.coord = potential_coord
+            self.matrix.piece.coord = potential_coord
             if not movement == Movement.DOWN:
-                self.current.last_rotation_point = None
+                self.matrix.piece.last_rotation_point = None
             self.move_ghost()
             return True
         else:
-            if prelock and not self.current.prelocked and movement == Movement.DOWN:
-                self.current.prelocked = True
+            if prelock and not self.matrix.piece.prelocked and movement == Movement.DOWN:
+                self.matrix.piece.prelocked = True
                 self.start(self.lock, self.lock_delay)
             return False
 
     def rotate(self, rotation):
-        rotated_coords = tuple(Coord(rotation * mino.coord.y, -rotation * mino.coord.x) for mino in self.current)
-        for rotation_point, liberty_degree in enumerate(self.current.SRS[rotation][self.current.orientation], start=1):
-            potential_coord = self.current.coord + liberty_degree
+        rotated_coords = tuple(Coord(rotation * mino.coord.y, -rotation * mino.coord.x) for mino in self.matrix.piece)
+        for rotation_point, liberty_degree in enumerate(self.matrix.piece.SRS[rotation][self.matrix.piece.orientation], start=1):
+            potential_coord = self.matrix.piece.coord + liberty_degree
             if self.can_move(potential_coord, rotated_coords):
-                if self.current.prelocked:
+                if self.matrix.piece.prelocked:
                     self.restart(self.lock, self.lock_delay)
-                self.current.coord = potential_coord
-                for mino, coord in zip(self.current, rotated_coords):
+                self.matrix.piece.coord = potential_coord
+                for mino, coord in zip(self.matrix.piece, rotated_coords):
                     mino.coord = coord
-                self.current.orientation = (self.current.orientation + rotation) % 4
-                self.current.last_rotation_point = rotation_point
+                self.matrix.piece.orientation = (self.matrix.piece.orientation + rotation) % 4
+                self.matrix.piece.last_rotation_point = rotation_point
                 self.move_ghost()
                 return True
         else:
@@ -204,15 +224,15 @@ class TetrisLogic:
     )
 
     def lock(self):
-        self.current.prelocked = False
+        self.matrix.piece.prelocked = False
         self.stop(self.lock)
 
         # Piece unlocked
-        if self.can_move(self.current.coord + Movement.DOWN, (mino.coord for mino in self.current)):
+        if self.can_move(self.matrix.piece.coord + Movement.DOWN, (mino.coord for mino in self.matrix.piece)):
             return
 
         # Game over
-        if all((mino.coord + self.current.coord).y >= self.NB_LINES for mino in self.current):
+        if all((mino.coord + self.matrix.piece.coord).y >= self.NB_LINES for mino in self.matrix.piece):
             self.game_over()
             return
 
@@ -221,12 +241,12 @@ class TetrisLogic:
             self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         # T-Spin
-        if type(self.current) == T and self.current.last_rotation_point is not None:
+        if type(self.matrix.piece) == T_Tetrimino and self.matrix.piece.last_rotation_point is not None:
             a = self.is_t_slot(0)
             b = self.is_t_slot(1)
             c = self.is_t_slot(3)
             d = self.is_t_slot(2)
-            if self.current.last_rotation_point == 5 or (a and b and (c or d)):
+            if self.matrix.piece.last_rotation_point == 5 or (a and b and (c or d)):
                 t_spin = T_Spin.T_SPIN
             elif c and d and (a or b):
                 t_spin = T_Spin.MINI
@@ -235,8 +255,8 @@ class TetrisLogic:
         else:
             t_spin = T_Spin.NONE
 
-        for mino in self.current:
-            coord = mino.coord + self.current.coord
+        for mino in self.matrix.piece:
+            coord = mino.coord + self.matrix.piece.coord
             del mino.coord
             if coord.y <= self.NB_LINES + 3:
                 self.matrix[coord.y][coord.x] = mino
@@ -281,7 +301,7 @@ class TetrisLogic:
         if self.goal <= 0:
             self.new_level()
         else:
-            self.new_current()
+            self.new_matrix_piece()
 
     def can_move(self, potential_coord, minoes_coords):
         return all(self.matrix.cell_is_free(potential_coord + mino_coord) for mino_coord in minoes_coords)
@@ -289,28 +309,27 @@ class TetrisLogic:
     T_SLOT_COORDS = (Coord(-1, 1), Coord(1, 1), Coord(-1, 1), Coord(-1, -1))
 
     def is_t_slot(self, n):
-        t_slot_coord = self.current.coord + self.T_SLOT_COORDS[(self.current.orientation + n) % 4]
+        t_slot_coord = self.matrix.piece.coord + self.T_SLOT_COORDS[(self.matrix.piece.orientation + n) % 4]
         return not self.matrix.cell_is_free(t_slot_coord)
 
     def swap(self):
-        if self.current.hold_enabled:
-            self.current.hold_enabled = False
-            self.current.prelocked = False
+        if self.matrix.piece.hold_enabled:
+            self.matrix.piece.hold_enabled = False
+            self.matrix.piece.prelocked = False
             self.stop(self.lock)
-            self.current, self.held = self.held, self.current
-            if type(self.held) == I:
-                self.held.coord = self.HELD_COORD + Movement.LEFT
-            else:
-                self.held.coord = self.HELD_COORD
-            for mino, coord in zip(self.held, self.held.MINOES_COORDS):
+            self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
+            self.held.piece.coord = self.HELD_COORD
+            if type(self.held.piece) == I_Tetrimino:
+                self.held.piece.coord += Movement.LEFT
+            for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
                 mino.coord = coord
 
-            if self.current:
-                self.current.coord = self.CURRENT_COORD
-                self.ghost = self.current.ghost()
+            if self.matrix.piece:
+                self.matrix.piece.coord = self.CURRENT_COORD
+                self.matrix.ghost = self.matrix.piece.ghost()
                 self.move_ghost()
             else:
-                self.new_current()
+                self.new_matrix_piece()
 
     def pause(self):
         self.state = State.PAUSED
@@ -322,7 +341,7 @@ class TetrisLogic:
     def resume(self):
         self.state = State.PLAYING
         self.start(self.fall, self.fall_delay)
-        if self.current.prelocked:
+        if self.matrix.piece.prelocked:
             self.start(self.lock, self.lock_delay)
         self.start(self.update_time, 1)
 

@@ -39,12 +39,25 @@ GHOST_ALPHA = 30
 MATRIX_BG_ALPHA = 100
 BAR_ALPHA = 75
 
+# Mino size
+MINO_SIZE = 20
+MINO_SPRITE_SIZE = 21
+
+if getattr(sys, 'frozen', False):
+    # The application is frozen
+    DATA_DIR = os.path.dirname(sys.executable)
+else:
+    # The application is not frozen
+    # Change this bit to match where you store your data files:
+    DATA_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(DATA_DIR, "res")
+
 # Sprites
-WINDOW_BG_PATH = "res/bg.jpg"
-MATRIX_BG_PATH = "res/matrix.png"
-HELD_BG_PATH = "res/held.png"
-NEXT_BG_PATH = "res/next.png"
-MINOES_SPRITES_PATH = "res/minoes.png"
+WINDOW_BG_PATH = os.path.join(DATA_DIR, "bg.jpg")
+MATRIX_BG_PATH = os.path.join(DATA_DIR, "matrix.png")
+HELD_BG_PATH = os.path.join(DATA_DIR, "held.png")
+NEXT_BG_PATH = os.path.join(DATA_DIR, "next.png")
+MINOES_SPRITES_PATH = os.path.join(DATA_DIR, "minoes.png")
 Color.PRELOCKED = 7
 MINOES_COLOR_ID = {
     Color.BLUE: 0,
@@ -56,8 +69,6 @@ MINOES_COLOR_ID = {
     Color.YELLOW: 6,
     Color.PRELOCKED: 7,
 }
-MINO_SIZE = 20
-MINO_SPRITE_SIZE = 21
 TEXTURES = arcade.load_textures(
     MINOES_SPRITES_PATH, ((i * MINO_SPRITE_SIZE, 0, MINO_SPRITE_SIZE, MINO_SPRITE_SIZE) for i in range(8))
 )
@@ -74,12 +85,15 @@ CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
-FONT_NAME = "res/joystix monospace.ttf"
+FONT_NAME = os.path.join(DATA_DIR, "joystix monospace.ttf")
 STATS_TEXT_MARGIN = 40
 STATS_TEXT_SIZE = 14
 STATS_TEXT_WIDTH = 150
 HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 HIGHLIGHT_TEXT_SIZE = 20
+
+# Music
+MUSIC_PATH = os.path.join(DATA_DIR, "Tetris - Song A.mp3")
 
 
 class MinoSprite(arcade.Sprite):
@@ -94,8 +108,8 @@ class MinoSprite(arcade.Sprite):
     def refresh(self, x, y, prelocked=False):
         self.scale = self.window.scale
         size = MINO_SIZE * self.scale
-        self.left = self.window.matrix_bg.left + x * size
-        self.bottom = self.window.matrix_bg.bottom + y * size
+        self.left = self.window.matrix.bg.left + x * size
+        self.bottom = self.window.matrix.bg.bottom + y * size
         self.set_texture(prelocked)
 
 
@@ -166,14 +180,17 @@ class TetrArcade(TetrisLogic, arcade.Window):
         arcade.set_background_color(BG_COLOR)
         self.set_minimum_size(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
-        self.matrix_bg = arcade.Sprite(MATRIX_BG_PATH)
-        self.matrix_bg.alpha = MATRIX_BG_ALPHA
-        self.held_bg = arcade.Sprite(HELD_BG_PATH)
-        self.held_bg.alpha = BAR_ALPHA
-        self.next_bg = arcade.Sprite(NEXT_BG_PATH)
-        self.next_bg.alpha = BAR_ALPHA
+        self.matrix.bg = arcade.Sprite(MATRIX_BG_PATH)
+        self.matrix.bg.alpha = MATRIX_BG_ALPHA
+        self.held.bg = arcade.Sprite(HELD_BG_PATH)
+        self.held.bg.alpha = BAR_ALPHA
+        self.next.bg = arcade.Sprite(NEXT_BG_PATH)
+        self.next.bg.alpha = BAR_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
+        if self.play_music:
+            self.music = arcade.Sound(MUSIC_PATH)
+            self.music_player = None
 
     def new_conf(self):
         self.conf["WINDOW"] = {"width": WINDOW_WIDTH, "height": WINDOW_HEIGHT, "fullscreen": False}
@@ -188,6 +205,9 @@ class TetrArcade(TetrisLogic, arcade.Window):
             "hold": "C",
             "pause": "ESCAPE",
             "fullscreen": "F11",
+        }
+        self.conf["MUSIC"] = {
+            "play": True
         }
         self.conf["AUTO-REPEAT"] = {"delay": 0.3, "period": 0.01}
         self.load_conf()
@@ -252,47 +272,71 @@ AGAIN""".format(
             self.conf["KEYBOARD"]["start"]
         )
 
+        self.play_music = self.conf["MUSIC"].getboolean("play")
+
     def new_game(self):
         self.highlight_texts = []
         super().new_game()
+        if self.play_music:
+            if self.music_player:
+                self.music_player.seek(0)
+                self.music_player.play()
+            else:
+                self.music_player = self.music.player.play()
+                self.music_player.loop = True
 
     def new_tetromino(self):
         tetromino = super().new_tetromino()
         tetromino.sprites = TetrominoSprites(tetromino, self)
         return tetromino
 
-    def new_current(self):
+    def new_matrix_piece(self):
         self.matrix.sprites = MatrixSprites(self.matrix)
-        super().new_current()
-        self.ghost.sprites = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
-        for tetromino in [self.current, self.ghost] + self.next:
+        super().new_matrix_piece()
+        self.matrix.ghost.sprites = TetrominoSprites(self.matrix.ghost, self, GHOST_ALPHA)
+        for tetromino in [self.matrix.piece, self.matrix.ghost] + self.next.pieces:
             tetromino.sprites.refresh()
 
     def move(self, movement, prelock=True):
         moved = super().move(movement, prelock)
-        self.current.sprites.refresh()
+        self.matrix.piece.sprites.refresh()
         if moved:
-            self.ghost.sprites.refresh()
+            self.matrix.ghost.sprites.refresh()
         return moved
 
     def rotate(self, rotation):
         rotated = super().rotate(rotation)
         if rotated:
-            for tetromino in (self.current, self.ghost):
+            for tetromino in (self.matrix.piece, self.matrix.ghost):
                 tetromino.sprites.refresh()
         return rotated
 
     def swap(self):
         super().swap()
-        self.ghost.sprites = TetrominoSprites(self.ghost, self, GHOST_ALPHA)
-        for tetromino in [self.held, self.current, self.ghost]:
+        self.matrix.ghost.sprites = TetrominoSprites(self.matrix.ghost, self, GHOST_ALPHA)
+        for tetromino in (self.held.piece, self.matrix.piece, self.matrix.ghost):
             if tetromino:
                 tetromino.sprites.refresh()
 
     def lock(self):
-        self.current.prelocked = False
-        self.current.sprites.refresh()
+        self.matrix.piece.prelocked = False
+        self.matrix.piece.sprites.refresh()
         super().lock()
+
+    def pause(self):
+        super().pause()
+        if self.play_music:
+            self.music_player.pause()
+
+    def resume(self):
+        super().resume()
+        if self.play_music:
+            self.music_player.play()
+
+    def game_over(self):
+        super().game_over()
+        if self.play_music:
+            self.music_player.pause()
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -327,12 +371,12 @@ AGAIN""".format(
         self.bg.draw()
 
         if self.state in (State.PLAYING, State.OVER):
-            self.matrix_bg.draw()
-            self.held_bg.draw()
-            self.next_bg.draw()
+            self.matrix.bg.draw()
+            self.held.bg.draw()
+            self.next.bg.draw()
             self.matrix.sprites.draw()
 
-            for tetromino in [self.held, self.current, self.ghost] + self.next:
+            for tetromino in [self.held.piece, self.matrix.piece, self.matrix.ghost] + self.next.pieces:
                 if tetromino:
                     tetromino.sprites.draw()
 
@@ -341,8 +385,8 @@ AGAIN""".format(
             for y, text in enumerate(("TIME", "LINES", "GOAL", "LEVEL", "HIGH SCORE", "SCORE")):
                 arcade.draw_text(
                     text=text,
-                    start_x=self.matrix_bg.left - self.scale * (STATS_TEXT_MARGIN + STATS_TEXT_WIDTH),
-                    start_y=self.matrix_bg.bottom + 1.5 * (2 * y + 1) * font_size,
+                    start_x=self.matrix.bg.left - self.scale * (STATS_TEXT_MARGIN + STATS_TEXT_WIDTH),
+                    start_y=self.matrix.bg.bottom + 1.5 * (2 * y + 1) * font_size,
                     color=TEXT_COLOR,
                     font_size=font_size,
                     align="right",
@@ -361,8 +405,8 @@ AGAIN""".format(
             ):
                 arcade.draw_text(
                     text=text,
-                    start_x=self.matrix_bg.left - STATS_TEXT_MARGIN * self.scale,
-                    start_y=self.matrix_bg.bottom + 3 * y * font_size,
+                    start_x=self.matrix.bg.left - STATS_TEXT_MARGIN * self.scale,
+                    start_y=self.matrix.bg.bottom + 3 * y * font_size,
                     color=TEXT_COLOR,
                     font_size=font_size,
                     align="right",
@@ -379,8 +423,8 @@ AGAIN""".format(
         if highlight_text:
             arcade.draw_text(
                 text=highlight_text,
-                start_x=self.matrix_bg.center_x,
-                start_y=self.matrix_bg.center_y,
+                start_x=self.matrix.bg.center_x,
+                start_y=self.matrix.bg.center_y,
                 color=HIGHLIGHT_TEXT_COLOR,
                 font_size=HIGHLIGHT_TEXT_SIZE * self.scale,
                 align="center",
@@ -405,23 +449,23 @@ AGAIN""".format(
         self.bg.center_x = center_x
         self.bg.center_y = center_y
 
-        self.matrix_bg.scale = self.scale
-        self.matrix_bg.center_x = center_x
-        self.matrix_bg.center_y = center_y
-        self.matrix_bg.left = int(self.matrix_bg.left)
-        self.matrix_bg.top = int(self.matrix_bg.top)
+        self.matrix.bg.scale = self.scale
+        self.matrix.bg.center_x = center_x
+        self.matrix.bg.center_y = center_y
+        self.matrix.bg.left = int(self.matrix.bg.left)
+        self.matrix.bg.top = int(self.matrix.bg.top)
 
-        self.held_bg.scale = self.scale
-        self.held_bg.right = self.matrix_bg.left
-        self.held_bg.top = self.matrix_bg.top
+        self.held.bg.scale = self.scale
+        self.held.bg.right = self.matrix.bg.left
+        self.held.bg.top = self.matrix.bg.top
 
-        self.next_bg.scale = self.scale
-        self.next_bg.left = self.matrix_bg.right
-        self.next_bg.top = self.matrix_bg.top
+        self.next.bg.scale = self.scale
+        self.next.bg.left = self.matrix.bg.right
+        self.next.bg.top = self.matrix.bg.top
 
         self.matrix.sprites.resize(self.scale)
 
-        for tetromino in [self.held, self.current, self.ghost] + self.next:
+        for tetromino in [self.held.piece, self.matrix.piece, self.matrix.ghost] + self.next.pieces:
             if tetromino:
                 tetromino.sprites.resize(self.scale)
 
@@ -476,6 +520,8 @@ High score could not be saved:
 
     def on_close(self):
         self.save_high_score()
+        if self.play_music:
+            self.music_player.pause()
         super().on_close()
 
 
