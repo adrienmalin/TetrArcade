@@ -93,8 +93,8 @@ class TetrisLogic:
 
     score = property(get_score, set_score)
 
-    def new_game(self):
-        self.level = 0
+    def new_game(self, level=1):
+        self.level = level - 1
         self.score = 0
         self.nb_lines_cleared = 0
         self.goal = 0
