@@ -17,10 +17,26 @@ You can install it with:
 python -m pip install --user arcade"""
     )
 
-from tetrislogic import TetrisLogic, Color, State
+from tetrislogic import TetrisLogic, Color, State, Coord
 
 
 # Constants
+# Matrix
+NB_LINES = 20
+NB_COLS = 10
+NB_NEXT = 5
+
+# Delays (seconds)
+LOCK_DELAY = 0.5
+FALL_DELAY = 1
+AUTOREPEAT_DELAY = 0.300
+AUTOREPEAT_PERIOD = 0.010
+
+# Piece init coord
+MATRIX_PIECE_COORD = Coord(4, NB_LINES)
+NEXT_PIECE_COORDS = [Coord(NB_COLS + 4, NB_LINES - 4 * n - 3) for n in range(NB_NEXT)]
+HELD_PIECE_COORD = Coord(-5, NB_LINES - 3)
+
 # Window
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -48,7 +64,6 @@ if getattr(sys, 'frozen', False):
     DATA_DIR = os.path.dirname(sys.executable)
 else:
     # The application is not frozen
-    # Change this bit to match where you store your data files:
     DATA_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(DATA_DIR, "res")
 
@@ -74,14 +89,8 @@ TEXTURES = arcade.load_textures(
 )
 TEXTURES = {color: TEXTURES[i] for color, i in MINOES_COLOR_ID.items()}
 
-# User profile path
-if sys.platform == "win32":
-    USER_PROFILE_DIR = os.environ.get("appdata", os.path.expanduser("~\Appdata\Roaming"))
-else:
-    USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
-HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
-CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
+# Music
+MUSIC_PATH = os.path.join(DATA_DIR, "Tetris - Song A.mp3")
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
@@ -92,11 +101,18 @@ STATS_TEXT_WIDTH = 150
 HIGHLIGHT_TEXT_COLOR = arcade.color.BUBBLES
 HIGHLIGHT_TEXT_SIZE = 20
 
-# Music
-MUSIC_PATH = os.path.join(DATA_DIR, "Tetris - Song A.mp3")
+# User profile path
+if sys.platform == "win32":
+    USER_PROFILE_DIR = os.environ.get("appdata", os.path.expanduser("~\Appdata\Roaming"))
+else:
+    USER_PROFILE_DIR = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
+HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
+CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
 
 
 class MinoSprite(arcade.Sprite):
+
     def __init__(self, mino, window, alpha):
         super().__init__()
         self.alpha = alpha
@@ -114,6 +130,7 @@ class MinoSprite(arcade.Sprite):
 
 
 class MinoesSprites(arcade.SpriteList):
+
     def resize(self, scale):
         for sprite in self:
             sprite.scale = scale
@@ -121,6 +138,7 @@ class MinoesSprites(arcade.SpriteList):
 
 
 class TetrominoSprites(MinoesSprites):
+
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
@@ -136,6 +154,7 @@ class TetrominoSprites(MinoesSprites):
 
 
 class MatrixSprites(MinoesSprites):
+
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
@@ -150,6 +169,18 @@ class MatrixSprites(MinoesSprites):
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
+
+    NB_LINES = NB_LINES
+    NB_COLS = NB_COLS
+    NB_NEXT = NB_NEXT
+    LOCK_DELAY = LOCK_DELAY
+    FALL_DELAY = FALL_DELAY
+    AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
+    AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
+    MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
+    NEXT_PIECE_COORDS = NEXT_PIECE_COORDS
+    HELD_PIECE_COORD = HELD_PIECE_COORD
+
     def __init__(self):
         locale.setlocale(locale.LC_ALL, "")
         self.highlight_texts = []

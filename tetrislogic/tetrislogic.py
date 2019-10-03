@@ -12,9 +12,9 @@ from .consts import (
     FALL_DELAY,
     AUTOREPEAT_DELAY,
     AUTOREPEAT_PERIOD,
-    CURRENT_COORD,
-    NEXT_COORDS,
-    HELD_COORD,
+    MATRIX_PIECE_COORD,
+    NEXT_PIECE_COORDS,
+    HELD_PIECE_COORD,
 )
 
 
@@ -66,9 +66,9 @@ class TetrisLogic:
     FALL_DELAY = FALL_DELAY
     AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
     AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
-    CURRENT_COORD = CURRENT_COORD
-    NEXT_COORDS = NEXT_COORDS
-    HELD_COORD = HELD_COORD
+    MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
+    NEXT_PIECE_COORDS = NEXT_PIECE_COORDS
+    HELD_PIECE_COORD = HELD_PIECE_COORD
     random_bag = []
 
     def __init__(self):
@@ -138,12 +138,12 @@ class TetrisLogic:
 
     def new_matrix_piece(self):
         self.matrix.piece = self.next.pieces.pop(0)
-        self.matrix.piece.coord = self.CURRENT_COORD
+        self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.move_ghost()
         self.next.pieces.append(self.new_tetromino())
-        self.next.pieces[-1].coord = self.NEXT_COORDS[-1]
-        for tetromino, coord in zip(self.next.pieces, self.NEXT_COORDS):
+        self.next.pieces[-1].coord = self.NEXT_PIECE_COORDS[-1]
+        for tetromino, coord in zip(self.next.pieces, self.NEXT_PIECE_COORDS):
             tetromino.coord = coord
 
         if not self.can_move(self.matrix.piece.coord, (mino.coord for mino in self.matrix.piece)):
@@ -318,14 +318,14 @@ class TetrisLogic:
             self.matrix.piece.prelocked = False
             self.stop(self.lock)
             self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
-            self.held.piece.coord = self.HELD_COORD
+            self.held.piece.coord = self.HELD_PIECE_COORD
             if type(self.held.piece) == I_Tetrimino:
                 self.held.piece.coord += Movement.LEFT
             for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
                 mino.coord = coord
 
             if self.matrix.piece:
-                self.matrix.piece.coord = self.CURRENT_COORD
+                self.matrix.piece.coord = self.MATRIX_PIECE_COORD
                 self.matrix.ghost = self.matrix.piece.ghost()
                 self.move_ghost()
             else:
