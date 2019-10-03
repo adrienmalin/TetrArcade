@@ -255,18 +255,14 @@ class TetrisLogic:
         else:
             t_spin = T_Spin.NONE
 
-        for mino in self.matrix.piece:
-            coord = mino.coord + self.matrix.piece.coord
-            del mino.coord
-            if coord.y <= self.NB_LINES + 3:
-                self.matrix[coord.y][coord.x] = mino
+        self.enter_the_matrix()
 
         # Clear complete lines
         nb_lines_cleared = 0
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
                 nb_lines_cleared += 1
-                self.matrix.pop(y)
+                self.remove_line(y)
                 self.append_new_line_to_matrix()
         if nb_lines_cleared:
             self.nb_lines_cleared += nb_lines_cleared
@@ -302,6 +298,15 @@ class TetrisLogic:
             self.new_level()
         else:
             self.new_matrix_piece()
+
+    def enter_the_matrix(self):
+        for mino in self.matrix.piece:
+            coord = mino.coord + self.matrix.piece.coord
+            if coord.y <= self.NB_LINES + 3:
+                self.matrix[coord.y][coord.x] = mino
+
+    def remove_line(self, y):
+        self.matrix.pop(y)
 
     def can_move(self, potential_coord, minoes_coords):
         return all(self.matrix.cell_is_free(potential_coord + mino_coord) for mino_coord in minoes_coords)

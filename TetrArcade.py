@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 import sys
-import locale
-import time
-import os
-
-import configparser
-
 try:
     import arcade
 except ImportError as e:
     sys.exit(
-        str(e)
-        + """
+        str(e) + """
 This game require arcade library.
 You can install it with:
 python -m pip install --user arcade"""
     )
+import pyglet
+
+import locale
+import time
+import os
+import itertools
+import configparser
 
 from tetrislogic import TetrisLogic, Color, State, Coord
 
@@ -61,18 +61,19 @@ MINO_SPRITE_SIZE = 21
 
 if getattr(sys, 'frozen', False):
     # The application is frozen
-    DATA_DIR = os.path.dirname(sys.executable)
+    PROGRAM_DIR = os.path.dirname(sys.executable)
 else:
     # The application is not frozen
-    DATA_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(DATA_DIR, "res")
+    PROGRAM_DIR = os.path.dirname(__file__)
+RESOURCES_DIR = os.path.join(PROGRAM_DIR, "resources")
 
 # Sprites
-WINDOW_BG_PATH = os.path.join(DATA_DIR, "bg.jpg")
-MATRIX_BG_PATH = os.path.join(DATA_DIR, "matrix.png")
-HELD_BG_PATH = os.path.join(DATA_DIR, "held.png")
-NEXT_BG_PATH = os.path.join(DATA_DIR, "next.png")
-MINOES_SPRITES_PATH = os.path.join(DATA_DIR, "minoes.png")
+IMAGES_DIR = os.path.join(RESOURCES_DIR, "images")
+WINDOW_BG_PATH = os.path.join(IMAGES_DIR, "bg.jpg")
+MATRIX_BG_PATH = os.path.join(IMAGES_DIR, "matrix.png")
+HELD_BG_PATH = os.path.join(IMAGES_DIR, "held.png")
+NEXT_BG_PATH = os.path.join(IMAGES_DIR, "next.png")
+MINOES_SPRITES_PATH = os.path.join(IMAGES_DIR, "minoes.png")
 Color.PRELOCKED = 7
 MINOES_COLOR_ID = {
     Color.BLUE: 0,
@@ -90,11 +91,12 @@ TEXTURES = arcade.load_textures(
 TEXTURES = {color: TEXTURES[i] for color, i in MINOES_COLOR_ID.items()}
 
 # Music
-MUSIC_PATH = os.path.join(DATA_DIR, "Tetris - Song A.mp3")
+MUSIC_DIR = os.path.join(RESOURCES_DIR, "musics")
+MUSICS_PATHS = (entry.path for entry in os.scandir(MUSIC_DIR))
 
 # Text
 TEXT_COLOR = arcade.color.BUBBLES
-FONT_NAME = os.path.join(DATA_DIR, "joystix monospace.ttf")
+FONT_NAME = os.path.join(RESOURCES_DIR, "fonts/joystix monospace.ttf")
 STATS_TEXT_MARGIN = 40
 STATS_TEXT_SIZE = 14
 STATS_TEXT_WIDTH = 150
@@ -165,7 +167,11 @@ class MatrixSprites(MinoesSprites):
             for x, mino in enumerate(line):
                 if mino:
                     mino.sprite.refresh(x, y)
-                    self.append(mino.sprite)
+
+    def remove_line(self, y):
+        for mino in self.matrix[y]:
+            if mino:
+                self.remove(mino.sprite)
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
@@ -219,9 +225,14 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.next.bg.alpha = BAR_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
+
         if self.play_music:
-            self.music = arcade.Sound(MUSIC_PATH)
-            self.music_player = None
+            self.music = pyglet.media.Player()
+            playlist = itertools.cycle(
+                pyglet.media.load(path)
+                for path in MUSICS_PATHS
+            )
+            self.music.queue(playlist)
 
     def new_conf(self):
         self.conf["WINDOW"] = {"width": WINDOW_WIDTH, "height": WINDOW_HEIGHT, "fullscreen": False}
@@ -308,13 +319,10 @@ AGAIN""".format(
     def new_game(self):
         self.highlight_texts = []
         super().new_game()
+        self.matrix.sprites = MatrixSprites(self.matrix)
         if self.play_music:
-            if self.music_player:
-                self.music_player.seek(0)
-                self.music_player.play()
-            else:
-                self.music_player = self.music.player.play()
-                self.music_player.loop = True
+            self.music.seek(0)
+            self.music.play()
 
     def new_tetromino(self):
         tetromino = super().new_tetromino()
@@ -322,7 +330,6 @@ AGAIN""".format(
         return tetromino
 
     def new_matrix_piece(self):
-        self.matrix.sprites = MatrixSprites(self.matrix)
         super().new_matrix_piece()
         self.matrix.ghost.sprites = TetrominoSprites(self.matrix.ghost, self, GHOST_ALPHA)
         for tetromino in [self.matrix.piece, self.matrix.ghost] + self.next.pieces:
@@ -353,21 +360,31 @@ AGAIN""".format(
         self.matrix.piece.prelocked = False
         self.matrix.piece.sprites.refresh()
         super().lock()
+        self.matrix.sprites.refresh()
+
+    def enter_the_matrix(self):
+        super().enter_the_matrix()
+        for mino in self.matrix.piece:
+            self.matrix.sprites.append(mino.sprite)
+
+    def remove_line(self, y):
+        self.matrix.sprites.remove_line(y)
+        super().remove_line(y)
 
     def pause(self):
         super().pause()
         if self.play_music:
-            self.music_player.pause()
+            self.music.pause()
 
     def resume(self):
         super().resume()
         if self.play_music:
-            self.music_player.play()
+            self.music.play()
 
     def game_over(self):
         super().game_over()
         if self.play_music:
-            self.music_player.pause()
+            self.music.pause()
 
     def on_key_press(self, key, modifiers):
         for key_or_modifier in (key, modifiers):
@@ -552,7 +569,7 @@ High score could not be saved:
     def on_close(self):
         self.save_high_score()
         if self.play_music:
-            self.music_player.pause()
+            self.music.pause()
         super().on_close()
 
 
