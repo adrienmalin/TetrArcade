@@ -29,7 +29,7 @@ options = {
     "build_exe": {
         "packages": ["arcade", "pyglet"],
         "excludes": excludes,
-        "include_files": "res",
+        "include_files": "resources",
         "silent": True
     }
 }
