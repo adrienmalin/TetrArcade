@@ -71,7 +71,7 @@ class TetrisLogic:
     HELD_PIECE_COORD = HELD_PIECE_COORD
     random_bag = []
 
-    def __init__(self):
+    def __init__(self, lines=NB_LINES, collumns=NB_COLS, next_pieces=NB_NEXT):
         self.load_high_score()
         self.state = State.STARTING
         self.held = HoldQueue()
