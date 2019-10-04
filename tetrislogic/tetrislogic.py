@@ -299,7 +299,17 @@ class TetrisLogic:
 
         if self.pressed_actions:
             self.auto_repeat = False
+            self.stop(self.repeat_action)
 
+        for mino in self.matrix.piece:
+            coord = mino.coord + self.matrix.piece.coord
+            if coord.y <= self.matrix.lines + 3:
+                self.matrix[coord.y][coord.x] = mino
+        self.on_locked(self.matrix.piece)
+
+        self.pattern_phase()
+
+    def pattern_phase(self):
         # T-Spin
         if type(self.matrix.piece) == T_Tetrimino and self.matrix.piece.last_rotation_point is not None:
             a = self.is_t_slot(0)
@@ -315,18 +325,13 @@ class TetrisLogic:
         else:
             t_spin = T_Spin.NONE
 
-        for mino in self.matrix.piece:
-            coord = mino.coord + self.matrix.piece.coord
-            if coord.y <= self.matrix.lines + 3:
-                self.matrix[coord.y][coord.x] = mino
-        self.on_locked(self.matrix.piece)
-
         # Clear complete lines
         lines_cleared = 0
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
                 lines_cleared += 1
-                self.remove_line(y)
+                self.on_line_remove(y)
+                self.matrix.pop(y)
                 self.matrix.append_new_line()
         if lines_cleared:
             self.stats.lines_cleared += lines_cleared
@@ -363,14 +368,14 @@ class TetrisLogic:
         else:
             self.generation_phase()
 
-        if self.auto_repeat:
-            self.restart(self.repeat_action, self.AUTOREPEAT_DELAY)
+        if self.pressed_actions:
+            self.start(self.repeat_action, self.AUTOREPEAT_DELAY)
 
     def on_locked(piece):
         pass
 
-    def remove_line(self, y):
-        self.matrix.pop(y)
+    def on_line_remove(self, y):
+        pass
 
     def can_move(self, potential_coord, minoes_coords):
         return all(self.matrix.cell_is_free(potential_coord + mino_coord) for mino_coord in minoes_coords)

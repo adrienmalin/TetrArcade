@@ -323,6 +323,7 @@ AGAIN""".format(
         self.show_text("LEVEL\n{:n}".format(level))
 
     def on_generation_phase(self, piece):
+        self.matrix.sprites.refresh()
         self.matrix.ghost.sprites = TetrominoSprites(self.matrix.ghost, self, GHOST_ALPHA)
         for tetromino in [self.matrix.piece, self.matrix.ghost] + self.next.pieces:
             tetromino.sprites.refresh()
@@ -340,6 +341,15 @@ AGAIN""".format(
 
     def on_lock_phase(self):
         self.matrix.piece.sprites.refresh()
+        self.matrix.sprites.refresh()
+
+    def on_locked(self, piece):
+        piece.sprites.refresh()
+        for mino in piece:
+            self.matrix.sprites.append(mino.sprite)
+
+    def on_line_remove(self, y):
+        self.matrix.sprites.remove_line(y)
 
     def swap(self):
         super().swap()
@@ -347,16 +357,6 @@ AGAIN""".format(
         for tetromino in (self.held.piece, self.matrix.piece, self.matrix.ghost):
             if tetromino:
                 tetromino.sprites.refresh()
-
-    def on_locked(self, piece):
-        piece.sprites.refresh()
-        for mino in piece:
-            self.matrix.sprites.append(mino.sprite)
-
-    def remove_line(self, y):
-        self.matrix.sprites.remove_line(y)
-        super().remove_line(y)
-        self.matrix.sprites.refresh()
 
     def pause(self):
         super().pause()
