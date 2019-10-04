@@ -176,17 +176,6 @@ class MatrixSprites(MinoesSprites):
 
 class TetrArcade(TetrisLogic, arcade.Window):
 
-    NB_LINES = NB_LINES
-    NB_COLS = NB_COLS
-    NB_NEXT = NB_NEXT
-    LOCK_DELAY = LOCK_DELAY
-    FALL_DELAY = FALL_DELAY
-    AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
-    AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
-    MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
-    NEXT_PIECE_COORDS = NEXT_PIECE_COORDS
-    HELD_PIECE_COORD = HELD_PIECE_COORD
-
     def __init__(self):
         locale.setlocale(locale.LC_ALL, "")
         self.highlight_texts = []
@@ -203,7 +192,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
             self.new_conf()
             self.load_conf()
 
-        super().__init__()
+        super().__init__(NB_LINES, NB_COLS, NB_NEXT)
         arcade.Window.__init__(
             self,
             width=self.init_width,
@@ -234,8 +223,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
                     for path in MUSICS_PATHS
                 )
                 self.music.queue(playlist)
-            except Exception as e:
-                Warning("Can't play music :" + str(e))
+            except:
+                Warning("Can't play music.")
                 self.play_music = False
 
     def new_conf(self):
@@ -320,38 +309,37 @@ AGAIN""".format(
 
         self.play_music = self.conf["MUSIC"].getboolean("play")
 
-    def new_game(self):
+    def on_new_game(self):
         self.highlight_texts = []
-        super().new_game()
         self.matrix.sprites = MatrixSprites(self.matrix)
         if self.play_music:
             self.music.seek(0)
             self.music.play()
 
-    def new_tetromino(self):
-        tetromino = super().new_tetromino()
-        tetromino.sprites = TetrominoSprites(tetromino, self)
-        return tetromino
+    def on_new_piece(self, piece):
+        piece.sprites = TetrominoSprites(piece, self)
 
-    def new_matrix_piece(self):
-        super().new_matrix_piece()
+    def on_new_level(self, level):
+        self.show_text("LEVEL\n{:n}".format(level))
+
+    def on_generation_phase(self, piece):
         self.matrix.ghost.sprites = TetrominoSprites(self.matrix.ghost, self, GHOST_ALPHA)
         for tetromino in [self.matrix.piece, self.matrix.ghost] + self.next.pieces:
             tetromino.sprites.refresh()
 
-    def move(self, movement, prelock=True):
-        moved = super().move(movement, prelock)
+    def on_falling_phase(self):
         self.matrix.piece.sprites.refresh()
-        if moved:
-            self.matrix.ghost.sprites.refresh()
-        return moved
 
-    def rotate(self, rotation):
-        rotated = super().rotate(rotation)
-        if rotated:
-            for tetromino in (self.matrix.piece, self.matrix.ghost):
-                tetromino.sprites.refresh()
-        return rotated
+    def on_moved(self, moved):
+        self.matrix.piece.sprites.refresh()
+        self.matrix.ghost.sprites.refresh()
+
+    def on_rotated(self, direction):
+        for tetromino in (self.matrix.piece, self.matrix.ghost):
+            tetromino.sprites.refresh()
+
+    def on_lock_phase(self):
+        self.matrix.piece.sprites.refresh()
 
     def swap(self):
         super().swap()
@@ -360,20 +348,15 @@ AGAIN""".format(
             if tetromino:
                 tetromino.sprites.refresh()
 
-    def lock(self):
-        self.matrix.piece.prelocked = False
-        self.matrix.piece.sprites.refresh()
-        super().lock()
-        self.matrix.sprites.refresh()
-
-    def enter_the_matrix(self):
-        super().enter_the_matrix()
-        for mino in self.matrix.piece:
+    def on_locked(self, piece):
+        piece.sprites.refresh()
+        for mino in piece:
             self.matrix.sprites.append(mino.sprite)
 
     def remove_line(self, y):
         self.matrix.sprites.remove_line(y)
         super().remove_line(y)
+        self.matrix.sprites.refresh()
 
     def pause(self):
         super().pause()
@@ -432,7 +415,7 @@ AGAIN""".format(
                 if tetromino:
                     tetromino.sprites.draw()
 
-            t = time.localtime(self.time)
+            t = time.localtime(self.stats.time)
             font_size = STATS_TEXT_SIZE * self.scale
             for y, text in enumerate(("TIME", "LINES", "GOAL", "LEVEL", "HIGH SCORE", "SCORE")):
                 arcade.draw_text(
@@ -448,11 +431,11 @@ AGAIN""".format(
             for y, text in enumerate(
                 (
                     "{:02d}:{:02d}:{:02d}".format(t.tm_hour - 1, t.tm_min, t.tm_sec),
-                    "{:n}".format(self.nb_lines_cleared),
-                    "{:n}".format(self.goal),
-                    "{:n}".format(self.level),
-                    "{:n}".format(self.high_score),
-                    "{:n}".format(self.score),
+                    "{:n}".format(self.stats.lines_cleared),
+                    "{:n}".format(self.stats.goal),
+                    "{:n}".format(self.stats.level),
+                    "{:n}".format(self.stats.high_score),
+                    "{:n}".format(self.stats.score),
                 )
             ):
                 arcade.draw_text(
