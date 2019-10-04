@@ -227,12 +227,15 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.on_resize(self.init_width, self.init_height)
 
         if self.play_music:
-            self.music = pyglet.media.Player()
-            playlist = itertools.cycle(
-                pyglet.media.load(path)
-                for path in MUSICS_PATHS
-            )
-            self.music.queue(playlist)
+            try:
+                self.music = pyglet.media.Player()
+                playlist = itertools.cycle(
+                    pyglet.media.load(path)
+                    for path in MUSICS_PATHS
+                )
+                self.music.queue(playlist)
+            except:
+                self.play_music = False
 
     def new_conf(self):
         self.conf["WINDOW"] = {"width": WINDOW_WIDTH, "height": WINDOW_HEIGHT, "fullscreen": False}
