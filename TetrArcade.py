@@ -235,7 +235,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
                 )
                 self.music.queue(playlist)
             except Exception as e:
-                sys.warn("Can't play music :" + str(e))
+                Warning("Can't play music :" + str(e))
                 self.play_music = False
 
     def new_conf(self):
