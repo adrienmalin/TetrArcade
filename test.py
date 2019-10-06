@@ -23,7 +23,7 @@ for i in range(22):
     game.on_draw()
 game.lock_phase()
 game.hold()
-game.matrix.sprites.refresh()
+game.matrix.sprites.update()
 game.on_draw()
 while game.phase != Phase.OVER:
     game.hard_drop()

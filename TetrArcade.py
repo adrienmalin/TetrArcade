@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+import random
 
 try:
     import arcade
@@ -33,6 +34,7 @@ LOCK_DELAY = 0.5
 FALL_DELAY = 1
 AUTOREPEAT_DELAY = 0.300
 AUTOREPEAT_PERIOD = 0.010
+PARTICULE_ACCELERATION = 1.1
 
 # Piece init coord
 MATRIX_PIECE_COORD = Coord(4, LINES)
@@ -76,7 +78,7 @@ MATRIX_BG_PATH = os.path.join(IMAGES_DIR, "matrix.png")
 HELD_BG_PATH = os.path.join(IMAGES_DIR, "held.png")
 NEXT_BG_PATH = os.path.join(IMAGES_DIR, "next.png")
 MINOES_SPRITES_PATH = os.path.join(IMAGES_DIR, "minoes.png")
-Color.PRELOCKED = 7
+Color.LOCKED = 7
 MINOES_COLOR_ID = {
     Color.BLUE: 0,
     Color.CYAN: 1,
@@ -85,7 +87,7 @@ MINOES_COLOR_ID = {
     Color.ORANGE: 4,
     Color.RED: 5,
     Color.YELLOW: 6,
-    Color.PRELOCKED: 7,
+    Color.LOCKED: 7,
 }
 TEXTURES = arcade.load_textures(
     MINOES_SPRITES_PATH,
@@ -128,7 +130,7 @@ class MinoSprite(arcade.Sprite):
         self.alpha = alpha
         self.window = window
         self.append_texture(TEXTURES[mino.color])
-        self.append_texture(TEXTURES[Color.PRELOCKED])
+        self.append_texture(TEXTURES[Color.LOCKED])
         self.set_texture(0)
 
     def update(self, x, y, texture=0):
@@ -214,7 +216,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.matrix.bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
-        self.exploding_minoes = None
+        self.exploding_minoes = [None for y in range(LINES)]
 
         if self.play_music:
             try:
@@ -382,7 +384,31 @@ AGAIN""".format(
             matrix.sprites.append(mino.sprite)
 
     def on_line_remove(self, matrix, y):
+        line_textures = tuple(TEXTURES[mino.color] for mino in matrix[y])
+        self.exploding_minoes[y] = arcade.Emitter(
+            center_xy=(matrix.bg.left, matrix.bg.bottom + (y + 0.5) * MINO_SIZE),
+            emit_controller=arcade.EmitBurst(COLLUMNS),
+            particle_factory=lambda emitter: arcade.LifetimeParticle(
+                filename_or_texture=random.choice(line_textures),
+                change_xy=arcade.rand_in_rect(
+                    (-COLLUMNS * MINO_SIZE, -4 * MINO_SIZE),
+                    2 * COLLUMNS * MINO_SIZE,
+                    5 * MINO_SIZE,
+                ),
+                lifetime=1,
+                center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
+                scale=self.scale,
+                alpha=NORMAL_ALPHA,
+                change_angle=2,
+                mutation_callback=self.speed_up_particule,
+            ),
+        )
+
         matrix.sprites.remove_line(y)
+
+    def speed_up_particule(self, particule):
+        particule.change_x *= PARTICULE_ACCELERATION
+        particule.change_y *= PARTICULE_ACCELERATION
 
     def on_pattern_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
         if pattern_score:
@@ -491,6 +517,10 @@ AGAIN""".format(
                     anchor_x="right",
                 )
 
+        for exploding_minoes in self.exploding_minoes:
+            if exploding_minoes:
+                exploding_minoes.draw()
+
         highlight_text = {
             Phase.STARTING: self.start_text,
             Phase.FALLING: self.highlight_texts[0] if self.highlight_texts else "",
@@ -548,7 +578,7 @@ AGAIN""".format(
                 crypted_high_score = f.read()
                 super().load_high_score(crypted_high_score)
         except:
-            self.high_score = 0
+            self.stats.high_score = 0
 
     def save_high_score(self):
         try:
@@ -598,8 +628,9 @@ High score could not be saved:
         if self.matrix.piece:
             texture = LOCKED_TEXTURE if self.phase == Phase.LOCK else NORMAL_TEXTURE
             self.matrix.piece.sprites.update(texture=texture)
-        if self.exploding_minoes:
-            self.exploding_minoes.update()
+        for exploding_minoes in self.exploding_minoes:
+            if exploding_minoes:
+                exploding_minoes.update()
 
     def on_close(self):
         self.save_high_score()

@@ -79,6 +79,7 @@ class Stats:
 
     def __init__(self):
         self._score = 0
+        self.high_score = 0
         self.time = 0
 
     def new_game(self, level):
