@@ -274,6 +274,9 @@ class TetrisLogic:
         self.stop(self.fall)
         self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
 
+        for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
+            mino.coord = coord
+
         if self.matrix.piece:
             self.matrix.piece.coord = self.MATRIX_PIECE_COORD
             self.matrix.ghost = self.matrix.piece.ghost()
