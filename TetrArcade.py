@@ -131,7 +131,7 @@ class MinoSprite(arcade.Sprite):
         self.append_texture(TEXTURES[Color.PRELOCKED])
         self.set_texture(0)
 
-    def refresh(self, x, y, texture=0):
+    def update(self, x, y, texture=0):
         self.scale = self.window.scale
         size = MINO_SIZE * self.scale
         self.left = self.window.matrix.bg.left + x * size
@@ -143,7 +143,7 @@ class MinoesSprites(arcade.SpriteList):
     def resize(self, scale):
         for sprite in self:
             sprite.scale = scale
-        self.refresh()
+        self.update()
 
 
 class TetrominoSprites(MinoesSprites):
@@ -155,23 +155,23 @@ class TetrominoSprites(MinoesSprites):
             mino.sprite = MinoSprite(mino, window, alpha)
             self.append(mino.sprite)
 
-    def refresh(self, texture=NORMAL_TEXTURE):
+    def update(self, texture=NORMAL_TEXTURE):
         for mino in self.tetromino:
             coord = mino.coord + self.tetromino.coord
-            mino.sprite.refresh(coord.x, coord.y, texture)
+            mino.sprite.update(coord.x, coord.y, texture)
 
 
 class MatrixSprites(MinoesSprites):
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
-        self.refresh()
+        self.update()
 
-    def refresh(self):
+    def update(self):
         for y, line in enumerate(self.matrix):
             for x, mino in enumerate(line):
                 if mino:
-                    mino.sprite.refresh(x, y)
+                    mino.sprite.update(x, y)
 
     def remove_line(self, y):
         for mino in self.matrix[y]:
@@ -214,6 +214,7 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.matrix.bg.alpha = MATRIX_BG_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
+        self.exploding_minoes = None
 
         if self.play_music:
             try:
@@ -369,7 +370,7 @@ AGAIN""".format(
         self.show_text("LEVEL\n{:n}".format(level))
 
     def on_generation_phase(self, matrix, falling_piece, ghost_piece, next_pieces):
-        matrix.sprites.refresh()
+        matrix.sprites.update()
         falling_piece.sprites = TetrominoSprites(falling_piece, self)
         ghost_piece.sprites = TetrominoSprites(ghost_piece, self, GHOST_ALPHA)
         next_pieces[-1].sprites = TetrominoSprites(next_pieces[-1], self)
@@ -590,13 +591,15 @@ High score could not be saved:
             arcade.unschedule(_task)
         arcade.schedule(_task, period)
 
-    def on_update(self, delta_time):
+    def update(self, delta_time):
         for piece in [self.held.piece, self.matrix.ghost] + self.next.pieces:
             if piece:
-                piece.sprites.refresh()
+                piece.sprites.update()
         if self.matrix.piece:
             texture = LOCKED_TEXTURE if self.phase == Phase.LOCK else NORMAL_TEXTURE
-            self.matrix.piece.sprites.refresh(texture=texture)
+            self.matrix.piece.sprites.update(texture=texture)
+        if self.exploding_minoes:
+            self.exploding_minoes.update()
 
     def on_close(self):
         self.save_high_score()
