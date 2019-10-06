@@ -26,7 +26,7 @@ from tetrislogic import TetrisLogic, Color, Phase, Coord, I_Tetrimino, Movement
 # Matrix
 LINES = 20
 COLLUMNS = 10
-NEXT_PIECES = 5
+NEXT_PIECES = 6
 
 # Delays (seconds)
 LOCK_DELAY = 0.5
@@ -36,8 +36,8 @@ AUTOREPEAT_PERIOD = 0.010
 
 # Piece init coord
 MATRIX_PIECE_COORD = Coord(4, LINES)
-NEXT_PIECES_COORDS = [Coord(COLLUMNS + 4, LINES - 4 * n - 3) for n in range(COLLUMNS)]
-HELD_PIECE_COORD = Coord(-5, LINES - 3)
+NEXT_PIECES_COORDS = [Coord(COLLUMNS + 4, LINES - 4 * n) for n in range(NEXT_PIECES)]
+HELD_PIECE_COORD = Coord(-5, LINES)
 
 # Window
 WINDOW_WIDTH = 800
@@ -212,10 +212,6 @@ class TetrArcade(TetrisLogic, arcade.Window):
         self.bg = arcade.Sprite(WINDOW_BG_PATH)
         self.matrix.bg = arcade.Sprite(MATRIX_BG_PATH)
         self.matrix.bg.alpha = MATRIX_BG_ALPHA
-        self.held.bg = arcade.Sprite(HELD_BG_PATH)
-        self.held.bg.alpha = BAR_ALPHA
-        self.next.bg = arcade.Sprite(NEXT_BG_PATH)
-        self.next.bg.alpha = BAR_ALPHA
         self.matrix.sprites = MatrixSprites(self.matrix)
         self.on_resize(self.init_width, self.init_height)
 
@@ -401,11 +397,12 @@ AGAIN""".format(
         if combo_score:
             self.show_text("COMBO x{:n}\n{:n}".format(nb_combo, combo_score))
 
-    def on_hold(self, held_piece):
+    def on_hold(self, held_piece, falling_piece, ghost_piece):
         held_piece.coord = HELD_PIECE_COORD
         if type(held_piece) == I_Tetrimino:
             held_piece.coord += Movement.LEFT
         held_piece.sprites.refresh()
+        ghost_piece.sprites = TetrominoSprites(ghost_piece, self, GHOST_ALPHA)
 
     def pause(self):
         super().pause()
@@ -455,8 +452,6 @@ AGAIN""".format(
 
         if self.phase not in (Phase.STARTING, Phase.PAUSED):
             self.matrix.bg.draw()
-            self.held.bg.draw()
-            self.next.bg.draw()
             self.matrix.sprites.draw()
 
             for tetromino in [
@@ -544,14 +539,6 @@ AGAIN""".format(
         self.matrix.bg.center_y = center_y
         self.matrix.bg.left = int(self.matrix.bg.left)
         self.matrix.bg.top = int(self.matrix.bg.top)
-
-        self.held.bg.scale = self.scale
-        self.held.bg.right = self.matrix.bg.left
-        self.held.bg.top = self.matrix.bg.top
-
-        self.next.bg.scale = self.scale
-        self.next.bg.left = self.matrix.bg.right
-        self.next.bg.top = self.matrix.bg.top
 
         self.matrix.sprites.resize(self.scale)
 

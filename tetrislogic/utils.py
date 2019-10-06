@@ -42,6 +42,7 @@ class Color:
 class Phase:
 
     STARTING = "STARTING"
+    GENERATION = "GENERATION"
     FALLING = "FALLING"
     LOCK = "LOCK"
     PATTERN = "PATTERN"

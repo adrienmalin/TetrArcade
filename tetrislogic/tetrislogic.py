@@ -175,6 +175,7 @@ class TetrisLogic:
         pass
 
     def generation_phase(self):
+        self.phase = Phase.GENERATION
         self.matrix.piece = self.next.pieces.pop(0)
         self.next.pieces.append(Tetromino())
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
@@ -273,16 +274,16 @@ class TetrisLogic:
         self.stop(self.fall)
         self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
 
-        self.on_hold(self.held.piece)
-
         if self.matrix.piece:
             self.matrix.piece.coord = self.MATRIX_PIECE_COORD
             self.matrix.ghost = self.matrix.piece.ghost()
+            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
             self.falling_phase()
         else:
             self.generation_phase()
+            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
 
-    def on_hold(self, held_piece):
+    def on_hold(self, held_piece, falling_piece, ghost_piece):
         pass
 
     def pattern_phase(self):
