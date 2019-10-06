@@ -15,5 +15,3 @@ AUTOREPEAT_PERIOD = 0.010  # Official : 0.010 s
 
 # Piece init coord
 MATRIX_PIECE_COORD = Coord(4, LINES)
-NEXT_PIECE_COORDS = [Coord(COLLUMNS + 4, LINES - 4 * n - 3) for n in range(NEXT_PIECES)]
-HELD_PIECE_COORD = Coord(-5, LINES - 3)
