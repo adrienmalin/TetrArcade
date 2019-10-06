@@ -403,6 +403,7 @@ AGAIN""".format(
             held_piece.coord += Movement.LEFT
         held_piece.sprites.refresh()
         ghost_piece.sprites = TetrominoSprites(ghost_piece, self, GHOST_ALPHA)
+        ghost_piece.sprites.refresh()
 
     def pause(self):
         super().pause()
