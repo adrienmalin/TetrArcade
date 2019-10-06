@@ -375,14 +375,6 @@ AGAIN""".format(
         next_pieces[-1].sprites = TetrominoSprites(next_pieces[-1], self)
         for piece, coord in zip(next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
-            piece.sprites.refresh()
-
-    def on_falling_phase(self, falling_piece, ghost_piece):
-        falling_piece.sprites.refresh()
-        ghost_piece.sprites.refresh()
-
-    def on_lock_phase(self, locked_piece):
-        locked_piece.sprites.refresh(texture=LOCKED_TEXTURE)
 
     def on_locked(self, matrix, locked_piece):
         for mino in locked_piece:
@@ -401,9 +393,7 @@ AGAIN""".format(
         held_piece.coord = HELD_PIECE_COORD
         if type(held_piece) == I_Tetrimino:
             held_piece.coord += Movement.LEFT
-        held_piece.sprites.refresh()
         ghost_piece.sprites = TetrominoSprites(ghost_piece, self, GHOST_ALPHA)
-        ghost_piece.sprites.refresh()
 
     def pause(self):
         super().pause()
@@ -599,6 +589,14 @@ High score could not be saved:
         else:
             arcade.unschedule(_task)
         arcade.schedule(_task, period)
+
+    def on_update(self, delta_time):
+        for piece in [self.held.piece, self.matrix.ghost] + self.next.pieces:
+            if piece:
+                piece.sprites.refresh()
+        if self.matrix.piece:
+            texture = LOCKED_TEXTURE if self.phase == Phase.LOCK else NORMAL_TEXTURE
+            self.matrix.piece.sprites.refresh(texture=texture)
 
     def on_close(self):
         self.save_high_score()
