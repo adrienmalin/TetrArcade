@@ -9,20 +9,14 @@ else:
     base = None
     icon = None
 
-excludes = [
-    "tkinter",
-    "PyQt4",
-    "PyQt5",
-    "PySide",
-    "PySide2"
-]
+excludes = ["tkinter", "PyQt4", "PyQt5", "PySide", "PySide2"]
 
 executable = Executable(
-    script = "TetrArcade.py",
-    icon = icon,
-    base = base,
+    script="TetrArcade.py",
+    icon=icon,
+    base=base,
     shortcutName="TetrArcade",
-    shortcutDir="DesktopFolder"
+    shortcutDir="DesktopFolder",
 )
 
 options = {
@@ -30,14 +24,14 @@ options = {
         "packages": ["arcade", "pyglet"],
         "excludes": excludes,
         "include_files": "resources",
-        "silent": True
+        "silent": True,
     }
 }
 setup(
-    name = "TetrArcade",
-    version = "0.3",
-    description = "Tetris clone",
-    author = "AdrienMalin",
-    executables = [executable],
-    options = options,
+    name="TetrArcade",
+    version="0.3",
+    description="Tetris clone",
+    author="AdrienMalin",
+    executables=[executable],
+    options=options,
 )
