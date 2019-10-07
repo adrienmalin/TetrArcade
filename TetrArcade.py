@@ -377,38 +377,41 @@ AGAIN""".format(
         for piece, coord in zip(next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
 
-    def on_locked(self, matrix, locked_piece):
+    def on_locks_down(self, matrix, locked_piece):
         for mino in locked_piece:
             matrix.sprites.append(mino.sprite)
 
-    def on_line_remove(self, matrix, y):
-        line_textures = tuple(TEXTURES[mino.color] for mino in matrix[y])
-        self.exploding_minoes[y] = arcade.Emitter(
-            center_xy=(matrix.bg.left, matrix.bg.bottom + (y + 0.5) * MINO_SIZE),
-            emit_controller=arcade.EmitBurst(COLLUMNS),
-            particle_factory=lambda emitter: arcade.LifetimeParticle(
-                filename_or_texture=random.choice(line_textures),
-                change_xy=arcade.rand_in_rect(
-                    (-COLLUMNS * MINO_SIZE, -4 * MINO_SIZE),
-                    2 * COLLUMNS * MINO_SIZE,
-                    5 * MINO_SIZE,
+    def on_animate_phase(self, matrix, lines_to_remove):
+        for y in lines_to_remove:
+            line_textures = tuple(TEXTURES[mino.color] for mino in matrix[y])
+            self.exploding_minoes[y] = arcade.Emitter(
+                center_xy=(matrix.bg.left, matrix.bg.bottom + (y + 0.5) * MINO_SIZE),
+                emit_controller=arcade.EmitBurst(COLLUMNS),
+                particle_factory=lambda emitter: arcade.LifetimeParticle(
+                    filename_or_texture=random.choice(line_textures),
+                    change_xy=arcade.rand_in_rect(
+                        (-COLLUMNS * MINO_SIZE, -4 * MINO_SIZE),
+                        2 * COLLUMNS * MINO_SIZE,
+                        5 * MINO_SIZE,
+                    ),
+                    lifetime=1,
+                    center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
+                    scale=self.scale,
+                    alpha=NORMAL_ALPHA,
+                    change_angle=2,
+                    mutation_callback=self.speed_up_particule,
                 ),
-                lifetime=1,
-                center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
-                scale=self.scale,
-                alpha=NORMAL_ALPHA,
-                change_angle=2,
-                mutation_callback=self.speed_up_particule,
-            ),
-        )
-
-        matrix.sprites.remove_line(y)
+            )
 
     def speed_up_particule(self, particule):
         particule.change_x *= PARTICULE_ACCELERATION
         particule.change_y *= PARTICULE_ACCELERATION
 
-    def on_pattern_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
+    def on_eliminate_phase(self, matrix, lines_to_remove):
+        for y in lines_to_remove:
+            matrix.sprites.remove_line(y)
+
+    def on_completion_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
         if pattern_score:
             self.show_text("{:s}\n{:n}".format(pattern_name, pattern_score))
         if combo_score:

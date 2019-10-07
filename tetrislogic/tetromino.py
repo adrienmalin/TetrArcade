@@ -51,7 +51,6 @@ class TetrominoBase(list):
         self.orientation = 0
         self.last_rotation_point = None
         self.hold_enabled = True
-        self.prelocked = False
 
     def ghost(self):
         return type(self)()

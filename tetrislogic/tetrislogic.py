@@ -104,7 +104,7 @@ class Stats:
     def update_time(self):
         self.time += 1
 
-    def pattern_phase(self, t_spin, lines_cleared):
+    def locks_down(self, t_spin, lines_cleared):
         pattern_name = []
         pattern_score = 0
         combo_score = 0
@@ -181,21 +181,17 @@ class TetrisLogic:
         self.next.pieces.append(Tetromino())
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
+        self.refresh_ghost()
 
         self.on_generation_phase(
             self.matrix, self.matrix.piece, self.matrix.ghost, self.next.pieces
         )
-        if not self.move(Movement.DOWN):
-            self.game_over()
-        else:
-            self.restart(self.fall, self.stats.fall_delay)
+        if self.move(Movement.DOWN):
             self.falling_phase()
+        else:
+            self.game_over()
 
-    def on_generation_phase(self, matrix, falling_piece, ghost_piece, next_pieces):
-        pass
-
-    def falling_phase(self):
-        self.phase = Phase.FALLING
+    def refresh_ghost(self):
         self.matrix.ghost.coord = self.matrix.piece.coord
         for ghost_mino, current_mino in zip(self.matrix.ghost, self.matrix.piece):
             ghost_mino.coord = current_mino.coord
@@ -205,7 +201,16 @@ class TetrisLogic:
         ):
             self.matrix.ghost.coord += Movement.DOWN
 
+    def on_generation_phase(self, matrix, falling_piece, ghost_piece, next_pieces):
+        pass
+
+    def falling_phase(self):
+        self.phase = Phase.FALLING
+        self.stop(self.locks_down)
+        self.start(self.fall, self.stats.fall_delay)
         self.on_falling_phase(self.matrix.piece, self.matrix.ghost)
+        if self.pressed_actions:
+            self.start(self.repeat_action, self.AUTOREPEAT_DELAY)
 
     def on_falling_phase(self, falling_piece, ghost_piece):
         pass
@@ -215,38 +220,27 @@ class TetrisLogic:
 
     def move(self, movement, rotated_coords=None, lock=True):
         potential_coord = self.matrix.piece.coord + movement
-        if self.space_to_move(
-            potential_coord,
-            rotated_coords or (mino.coord for mino in self.matrix.piece),
-        ):
+        portential_minoes_coords = rotated_coords or (mino.coord for mino in self.matrix.piece)
+        if self.space_to_move(potential_coord, portential_minoes_coords):
             self.matrix.piece.coord = potential_coord
             if rotated_coords:
                 for mino, coord in zip(self.matrix.piece, rotated_coords):
                     mino.coord = coord
+            self.refresh_ghost()
+            if movement != Movement.DOWN:
+                self.matrix.piece.last_rotation_point = None
+            if self.space_to_fall:
+                self.falling_phase()
             else:
-                if movement != Movement.DOWN:
-                    self.matrix.piece.last_rotation_point = None
-                if self.phase == Phase.LOCK:
-                    self.restart(self.pattern_phase, self.stats.lock_delay)
-            self.falling_phase()
+                self.lock_phase()
             return True
         else:
-            if lock and self.phase != Phase.LOCK and movement == Movement.DOWN:
-                self.lock_phase()
             return False
 
-    def lock_phase(self):
-        self.phase = Phase.LOCK
-        self.on_lock_phase(self.matrix.piece)
-        self.start(self.pattern_phase, self.stats.lock_delay)
-
-    def on_lock_phase(self, locked_piece):
-        pass
-
-    def space_to_move(self, potential_coord, minoes_coord):
-        return all(
-            self.matrix.cell_is_free(potential_coord + mino_coord)
-            for mino_coord in minoes_coord
+    def space_to_fall(self):
+        return self.space_to_move(
+            self.matrix.piece.coord + Movement.DOWN,
+            (mino.coord for mino in self.matrix.piece),
         )
 
     def rotate(self, rotation):
@@ -257,7 +251,7 @@ class TetrisLogic:
         for rotation_point, liberty_degree in enumerate(
             self.matrix.piece.SRS[rotation][self.matrix.piece.orientation], start=1
         ):
-            if self.move(liberty_degree, rotated_coords):
+            if self.move(liberty_degree, rotated_coords, lock=False):
                 self.matrix.piece.orientation = (
                     self.matrix.piece.orientation + rotation
                 ) % 4
@@ -266,42 +260,23 @@ class TetrisLogic:
         else:
             return False
 
-    def hold(self):
-        if not self.matrix.piece.hold_enabled:
-            return
+    def lock_phase(self):
+        self.phase = Phase.LOCK
+        self.on_lock_phase(self.matrix.piece)
+        self.restart(self.locks_down, self.stats.lock_delay)
 
-        self.matrix.piece.hold_enabled = False
-        self.stop(self.pattern_phase)
-        self.stop(self.fall)
-        self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
-
-        for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
-            mino.coord = coord
-
-        if self.matrix.piece:
-            self.matrix.piece.coord = self.MATRIX_PIECE_COORD
-            self.matrix.ghost = self.matrix.piece.ghost()
-            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
-            self.falling_phase()
-        else:
-            self.generation_phase()
-            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
-
-    def on_hold(self, held_piece, falling_piece, ghost_piece):
+    def on_lock_phase(self, locked_piece):
         pass
 
-    def pattern_phase(self):
-        self.phase = Phase.PATTERN
-        self.matrix.piece.prelocked = False
-        self.stop(self.pattern_phase)
-        self.stop(self.fall)
+    def space_to_move(self, potential_coord, minoes_coord):
+        return all(
+            self.matrix.cell_is_free(potential_coord + mino_coord)
+            for mino_coord in minoes_coord
+        )
 
-        # Piece unlocked
-        if self.space_to_move(
-            self.matrix.piece.coord + Movement.DOWN,
-            (mino.coord for mino in self.matrix.piece),
-        ):
-            return
+    def locks_down(self):
+        self.stop(self.locks_down)
+        self.stop(self.fall)
 
         # Game over
         if all(
@@ -319,7 +294,10 @@ class TetrisLogic:
             coord = mino.coord + self.matrix.piece.coord
             if coord.y <= self.matrix.lines + 3:
                 self.matrix[coord.y][coord.x] = mino
-        self.on_locked(self.matrix, self.matrix.piece)
+
+        self.on_locks_down(self.matrix, self.matrix.piece)
+
+        self.phase = Phase.PATTERN
 
         # T-Spin
         if (
@@ -340,37 +318,47 @@ class TetrisLogic:
             t_spin = T_Spin.NONE
 
         # Clear complete lines
-        lines_cleared = 0
+        self.lines_to_remove = []
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
-                lines_cleared += 1
-                self.on_line_remove(self.matrix, y)
-                self.matrix.pop(y)
-                self.matrix.append_new_line()
+                self.lines_to_remove.append(y)
+        lines_cleared = len(self.lines_to_remove)
         if lines_cleared:
             self.stats.lines_cleared += lines_cleared
 
-        pattern_name, pattern_score, nb_combo, combo_score = self.stats.pattern_phase(
+        self.phase = Phase.ANIMATE
+        self.on_animate_phase(self.matrix, self.lines_to_remove)
+
+        self.phase = Phase.ELIMINATE
+        self.on_eliminate_phase(self.matrix, self.lines_to_remove)
+        for y in self.lines_to_remove:
+            self.matrix.pop(y)
+            self.matrix.append_new_line()
+
+        self.phase = Phase.COMPLETION
+        pattern_name, pattern_score, nb_combo, combo_score = self.stats.locks_down(
             t_spin, lines_cleared
         )
-        self.on_pattern_phase(pattern_name, pattern_score, nb_combo, combo_score)
+        self.on_completion_phase(pattern_name, pattern_score, nb_combo, combo_score)
 
         if self.stats.goal <= 0:
             self.new_level()
         else:
             self.generation_phase()
 
-        if self.pressed_actions:
-            self.start(self.repeat_action, self.AUTOREPEAT_DELAY)
-
-    def on_locked(self, matrix, locked_piece):
+    def on_locks_down(self, matrix, locked_piece):
         pass
 
-    def on_line_remove(self, matrix, y):
+    def on_animate_phase(self, matrix, lines_to_remove):
         pass
 
-    def on_pattern_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
+    def on_eliminate_phase(self, matrix, lines_to_remove):
         pass
+
+    def on_completion_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
+        pass
+
+    # Actions
 
     def move_left(self):
         self.move(Movement.LEFT)
@@ -391,9 +379,34 @@ class TetrisLogic:
         return moved
 
     def hard_drop(self):
+        self.stop(self.locks_down)
         while self.move(Movement.DOWN, lock=False):
             self.stats.score += 2
-        self.pattern_phase()
+        self.locks_down()
+
+    def hold(self):
+        if not self.matrix.piece.hold_enabled:
+            return
+
+        self.matrix.piece.hold_enabled = False
+        self.stop(self.locks_down)
+        self.stop(self.fall)
+        self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
+
+        for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
+            mino.coord = coord
+
+        if self.matrix.piece:
+            self.matrix.piece.coord = self.MATRIX_PIECE_COORD
+            self.matrix.ghost = self.matrix.piece.ghost()
+            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
+            self.falling_phase()
+        else:
+            self.generation_phase()
+            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
+
+    def on_hold(self, held_piece, falling_piece, ghost_piece):
+        pass
 
     T_SLOT_COORDS = (Coord(-1, 1), Coord(1, 1), Coord(-1, 1), Coord(-1, -1))
 
@@ -415,7 +428,7 @@ class TetrisLogic:
         self.phase = Phase.FALLING
         self.start(self.fall, self.stats.fall_delay)
         if self.phase == Phase.LOCK:
-            self.start(self.pattern_phase, self.stats.lock_delay)
+            self.start(self.locks_down, self.stats.lock_delay)
         self.start(self.stats.update_time, 1)
 
     def game_over(self):
@@ -429,7 +442,7 @@ class TetrisLogic:
 
     def stop_all(self):
         self.stop(self.fall)
-        self.stop(self.pattern_phase)
+        self.stop(self.locks_down)
         self.stop(self.stats.update_time)
 
     def do_action(self, action):
