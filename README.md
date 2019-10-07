@@ -6,7 +6,7 @@ Tetris clone made with Python and Arcade graphic library
 
 ## Requirements
 
-* [Python](https://www.python.org/) 3.6 or upper
+* [Python](https://www.python.org/) 3.6 or later
 
 ## Install
 
