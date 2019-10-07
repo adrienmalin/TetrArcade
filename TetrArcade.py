@@ -135,7 +135,6 @@ class State:
 
 
 class Timer(AbstractTimer):
-
     def __init__(self):
         self.tasks = {}
 
@@ -165,7 +164,6 @@ class Timer(AbstractTimer):
 
 
 class MinoSprite(arcade.Sprite):
-
     def __init__(self, mino, window, alpha):
         super().__init__()
         self.alpha = alpha
@@ -182,7 +180,6 @@ class MinoSprite(arcade.Sprite):
 
 
 class MinoesSprites(arcade.SpriteList):
-
     def resize(self, scale):
         for sprite in self:
             sprite.scale = scale
@@ -190,7 +187,6 @@ class MinoesSprites(arcade.SpriteList):
 
 
 class TetrominoSprites(MinoesSprites):
-
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
@@ -211,7 +207,6 @@ class TetrominoSprites(MinoesSprites):
 
 
 class MatrixSprites(MinoesSprites):
-
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
@@ -438,7 +433,7 @@ AGAIN""".format(
                         2 * COLLUMNS * MINO_SIZE,
                         5 * MINO_SIZE,
                     ),
-                    lifetime=.2,
+                    lifetime=0.2,
                     center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
                     scale=self.scale,
                     alpha=NORMAL_ALPHA,
@@ -641,7 +636,11 @@ High score could not be saved:
             )
 
     def update(self, delta_time):
-        for piece in [self.held.piece, self.matrix.piece, self.matrix.ghost] + self.next.pieces:
+        for piece in [
+            self.held.piece,
+            self.matrix.piece,
+            self.matrix.ghost,
+        ] + self.next.pieces:
             if piece:
                 piece.sprites.update()
         for exploding_minoes in self.exploding_minoes:

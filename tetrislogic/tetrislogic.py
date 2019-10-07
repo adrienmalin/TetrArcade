@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pickle
 
-from .utils import Coord, Movement, Rotation, T_Spin
+from .utils import Coord, Movement, Spin, T_Spin, T_Slot
 from .tetromino import Tetromino, T_Tetrimino
 from .consts import (
     LINES,
@@ -12,15 +12,15 @@ from .consts import (
     AUTOREPEAT_DELAY,
     AUTOREPEAT_PERIOD,
     MATRIX_PIECE_COORD,
+    SCORES,
+    LINES_CLEAR_NAME
 )
 
 
-LINES_CLEAR_NAME = "LINES_CLEAR_NAME"
 CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 
 class AbstractTimer:
-
     def postpone(task, delay):
         raise Warning("AbstractTimer.postpone is not implemented.")
 
@@ -30,6 +30,7 @@ class AbstractTimer:
     def reset(self, task, period):
         self.timer.cancel(task)
         self.timer.postpone(task, period)
+
 
 class PieceContainer:
     def __init__(self):
@@ -69,8 +70,7 @@ class Matrix(list, PieceContainer):
 
     def space_to_fall(self):
         return self.space_to_move(
-            self.piece.coord + Movement.DOWN,
-            (mino.coord for mino in self.piece),
+            self.piece.coord + Movement.DOWN, (mino.coord for mino in self.piece)
         )
 
 
@@ -82,14 +82,6 @@ class NextQueue(PieceContainer):
 
 
 class Stats:
-
-    SCORES = (
-        {LINES_CLEAR_NAME: "", T_Spin.NONE: 0, T_Spin.MINI: 1, T_Spin.T_SPIN: 4},
-        {LINES_CLEAR_NAME: "SINGLE", T_Spin.NONE: 1, T_Spin.MINI: 2, T_Spin.T_SPIN: 8},
-        {LINES_CLEAR_NAME: "DOUBLE", T_Spin.NONE: 3, T_Spin.T_SPIN: 12},
-        {LINES_CLEAR_NAME: "TRIPLE", T_Spin.NONE: 5, T_Spin.T_SPIN: 16},
-        {LINES_CLEAR_NAME: "TETRIS", T_Spin.NONE: 8},
-    )
 
     def _get_score(self):
         return self._score
@@ -136,13 +128,13 @@ class Stats:
         if t_spin:
             pattern_name.append(t_spin)
         if lines_cleared:
-            pattern_name.append(self.SCORES[lines_cleared][LINES_CLEAR_NAME])
+            pattern_name.append(SCORES[lines_cleared][LINES_CLEAR_NAME])
             self.combo += 1
         else:
             self.combo = -1
 
         if lines_cleared or t_spin:
-            pattern_score = self.SCORES[lines_cleared][t_spin]
+            pattern_score = SCORES[lines_cleared][t_spin]
             self.goal -= pattern_score
             pattern_score *= 100 * self.level
             pattern_name = "\n".join(pattern_name)
@@ -206,7 +198,7 @@ class TetrisLogic:
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.refresh_ghost()
-        #if self.pressed_actions:
+        # if self.pressed_actions:
         #    self.timer.postpone(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         self.on_generation_phase(
@@ -248,15 +240,17 @@ class TetrisLogic:
 
     def move(self, movement, rotated_coords=None, lock=True):
         potential_coord = self.matrix.piece.coord + movement
-        portential_minoes_coords = rotated_coords or (mino.coord for mino in self.matrix.piece)
-        if self.matrix.space_to_move(potential_coord, portential_minoes_coords):
+        potential_minoes_coords = rotated_coords or (
+            mino.coord for mino in self.matrix.piece
+        )
+        if self.matrix.space_to_move(potential_coord, potential_minoes_coords):
             self.matrix.piece.coord = potential_coord
             if rotated_coords:
                 for mino, coord in zip(self.matrix.piece, rotated_coords):
                     mino.coord = coord
             self.refresh_ghost()
             if movement != Movement.DOWN:
-                self.matrix.piece.last_rotation_point = None
+                self.matrix.piece.rotated_last = False
             if self.matrix.space_to_fall():
                 self.falling_phase()
             else:
@@ -267,25 +261,27 @@ class TetrisLogic:
         else:
             return False
 
-    def rotate(self, rotation):
+    def rotate(self, spin):
         rotated_coords = tuple(
-            Coord(rotation * mino.coord.y, -rotation * mino.coord.x)
+            Coord(spin * mino.coord.y, -spin * mino.coord.x)
             for mino in self.matrix.piece
         )
         for rotation_point, liberty_degree in enumerate(
-            self.matrix.piece.SRS[rotation][self.matrix.piece.orientation], start=1
+            self.matrix.piece.SRS[spin][self.matrix.piece.orientation], start=1
         ):
             if self.move(liberty_degree, rotated_coords, lock=False):
                 self.matrix.piece.orientation = (
-                    self.matrix.piece.orientation + rotation
+                    self.matrix.piece.orientation + spin
                 ) % 4
-                self.matrix.piece.last_rotation_point = rotation_point
+                self.matrix.piece.rotated_last = True
+                if rotation_point == 5:
+                    self.matrix.piece.rotation_point_5_used = True
                 return True
         else:
             return False
 
     def locks_down(self):
-        #self.timer.cancel(self.repeat_action)
+        # self.timer.cancel(self.repeat_action)
         self.timer.cancel(self.lock_phase)
 
         # Game over
@@ -303,21 +299,24 @@ class TetrisLogic:
 
         self.on_locks_down(self.matrix, self.matrix.piece)
 
-        #Pattern phase
+        # Pattern phase
 
         # T-Spin
         if (
             type(self.matrix.piece) == T_Tetrimino
-            and self.matrix.piece.last_rotation_point is not None
+            and self.matrix.piece.rotated_last
         ):
-            a = self.is_t_slot(0)
-            b = self.is_t_slot(1)
-            c = self.is_t_slot(3)
-            d = self.is_t_slot(2)
-            if self.matrix.piece.last_rotation_point == 5 or (a and b and (c or d)):
+            a = self.is_t_slot(T_Slot.A)
+            b = self.is_t_slot(T_Slot.B)
+            c = self.is_t_slot(T_Slot.C)
+            d = self.is_t_slot(T_Slot.D)
+            if a and b and (c or d):
                 t_spin = T_Spin.T_SPIN
             elif c and d and (a or b):
-                t_spin = T_Spin.MINI
+                if self.matrix.piece.rotation_point_5_used:
+                    t_spin = T_Spin.T_SPIN
+                else:
+                    t_spin = T_Spin.MINI
             else:
                 t_spin = T_Spin.NONE
         else:
@@ -375,10 +374,10 @@ class TetrisLogic:
         self.move(Movement.RIGHT)
 
     def rotate_clockwise(self):
-        self.rotate(Rotation.CLOCKWISE)
+        self.rotate(Spin.CLOCKWISE)
 
     def rotate_counter(self):
-        self.rotate(Rotation.COUNTER)
+        self.rotate(Spin.COUNTER)
 
     def soft_drop(self):
         moved = self.move(Movement.DOWN)
