@@ -207,6 +207,7 @@ class TetrominoSprites(MinoesSprites):
     def set_texture(self, texture):
         for mino in self.tetromino:
             mino.sprite.set_texture(texture)
+        self.update()
 
 
 class MatrixSprites(MinoesSprites):
@@ -413,14 +414,15 @@ AGAIN""".format(
         for piece, coord in zip(next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
 
-    def on_falling_phase(self, falling_piece, ghost_piece):
+    def on_falling_phase(self, falling_piece):
         falling_piece.sprites.set_texture(Texture.NORMAL)
 
-    def on_lock_phase(self, falling_piece):
+    def on_locked(self, falling_piece):
         falling_piece.sprites.set_texture(Texture.LOCKED)
 
-    def on_locks_down(self, matrix, locked_piece):
-        for mino in locked_piece:
+    def on_locks_down(self, matrix, falling_piece):
+        falling_piece.sprites.set_texture(Texture.NORMAL)
+        for mino in falling_piece:
             matrix.sprites.append(mino.sprite)
 
     def on_animate_phase(self, matrix, lines_to_remove):
@@ -436,7 +438,7 @@ AGAIN""".format(
                         2 * COLLUMNS * MINO_SIZE,
                         5 * MINO_SIZE,
                     ),
-                    lifetime=1,
+                    lifetime=.2,
                     center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
                     scale=self.scale,
                     alpha=NORMAL_ALPHA,
@@ -639,11 +641,9 @@ High score could not be saved:
             )
 
     def update(self, delta_time):
-        for piece in [self.held.piece, self.matrix.ghost] + self.next.pieces:
+        for piece in [self.held.piece, self.matrix.piece, self.matrix.ghost] + self.next.pieces:
             if piece:
                 piece.sprites.update()
-        if self.matrix.piece:
-            self.matrix.piece.sprites.update()
         for exploding_minoes in self.exploding_minoes:
             if exploding_minoes:
                 exploding_minoes.update()

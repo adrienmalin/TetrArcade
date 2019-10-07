@@ -197,6 +197,8 @@ class TetrisLogic:
     def on_new_level(self, level):
         pass
 
+    # Tetris Engine
+
     def generation_phase(self, held_piece=None):
         if not held_piece:
             self.matrix.piece = self.next.pieces.pop(0)
@@ -204,8 +206,8 @@ class TetrisLogic:
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.refresh_ghost()
-        if self.pressed_actions:
-            self.timer.postpone(self.repeat_action, self.AUTOREPEAT_DELAY)
+        #if self.pressed_actions:
+        #    self.timer.postpone(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         self.on_generation_phase(
             self.matrix, self.matrix.piece, self.matrix.ghost, self.next.pieces
@@ -230,19 +232,18 @@ class TetrisLogic:
 
     def falling_phase(self):
         self.timer.cancel(self.lock_phase)
+        self.timer.cancel(self.locks_down)
         self.matrix.piece.locked = False
         self.timer.postpone(self.lock_phase, self.stats.fall_delay)
-        self.on_falling_phase(self.matrix.piece, self.matrix.ghost)
+        self.on_falling_phase(self.matrix.piece)
 
-    def on_falling_phase(self, falling_piece, ghost_piece):
+    def on_falling_phase(self, falling_piece):
         pass
 
     def lock_phase(self):
-        self.matrix.piece.locked = True
-        if not self.move(Movement.DOWN):
-            self.locks_down()
+        self.move(Movement.DOWN)
 
-    def on_lock_phase(self, falling_piece):
+    def on_locked(self, falling_piece):
         pass
 
     def move(self, movement, rotated_coords=None, lock=True):
@@ -256,12 +257,12 @@ class TetrisLogic:
             self.refresh_ghost()
             if movement != Movement.DOWN:
                 self.matrix.piece.last_rotation_point = None
-            if self.matrix.space_to_fall:
+            if self.matrix.space_to_fall():
                 self.falling_phase()
             else:
-                self.on_lock_phase(self.matrix.piece)
-                if self.matrix.piece.locked:
-                    self.timer.reset(self.locks_down, self.stats.lock_delay)
+                self.matrix.piece.locked = True
+                self.on_locked(self.matrix.piece)
+                self.timer.reset(self.locks_down, self.stats.lock_delay)
             return True
         else:
             return False
@@ -284,6 +285,9 @@ class TetrisLogic:
             return False
 
     def locks_down(self):
+        #self.timer.cancel(self.repeat_action)
+        self.timer.cancel(self.lock_phase)
+
         # Game over
         if all(
             (mino.coord + self.matrix.piece.coord).y >= self.matrix.lines
@@ -291,8 +295,6 @@ class TetrisLogic:
         ):
             self.game_over()
             return
-
-        self.timer.cancel(self.repeat_action)
 
         for mino in self.matrix.piece:
             coord = mino.coord + self.matrix.piece.coord
@@ -352,7 +354,7 @@ class TetrisLogic:
         else:
             self.generation_phase()
 
-    def on_locks_down(self, matrix, locked_piece):
+    def on_locks_down(self, matrix, falling_piece):
         pass
 
     def on_animate_phase(self, matrix, lines_to_remove):
