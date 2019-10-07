@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 
-from .utils import Coord, Rotation, Color
+from .utils import Coord, Spin, Color
 
 
 class Mino:
@@ -32,13 +32,13 @@ class TetrominoBase(list):
 
     # Super rotation system
     SRS = {
-        Rotation.CLOCKWISE: (
+        Spin.CLOCKWISE: (
             (Coord(0, 0), Coord(-1, 0), Coord(-1, 1), Coord(0, -2), Coord(-1, -2)),
             (Coord(0, 0), Coord(1, 0), Coord(1, -1), Coord(0, 2), Coord(1, 2)),
             (Coord(0, 0), Coord(1, 0), Coord(1, 1), Coord(0, -2), Coord(1, -2)),
             (Coord(0, 0), Coord(-1, 0), Coord(-1, -1), Coord(0, -2), Coord(-1, 2)),
         ),
-        Rotation.COUNTER: (
+        Spin.COUNTER: (
             (Coord(0, 0), Coord(1, 0), Coord(1, 1), Coord(0, -2), Coord(1, -2)),
             (Coord(0, 0), Coord(1, 0), Coord(1, -1), Coord(0, 2), Coord(1, 2)),
             (Coord(0, 0), Coord(-1, 0), Coord(-1, 1), Coord(0, -2), Coord(-1, -2)),
@@ -49,9 +49,9 @@ class TetrominoBase(list):
     def __init__(self):
         super().__init__(Mino(self.MINOES_COLOR, coord) for coord in self.MINOES_COORDS)
         self.orientation = 0
-        self.last_rotation_point = None
+        self.rotated_last = False
+        self.rotation_point_5_used = False
         self.hold_enabled = True
-        self.locked = False
 
     def ghost(self):
         return type(self)()
@@ -60,8 +60,8 @@ class TetrominoBase(list):
 class O_Tetrimino(TetrominoBase, metaclass=MetaTetromino):
 
     SRS = {
-        Rotation.CLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
-        Rotation.COUNTER: (tuple(), tuple(), tuple(), tuple()),
+        Spin.CLOCKWISE: (tuple(), tuple(), tuple(), tuple()),
+        Spin.COUNTER: (tuple(), tuple(), tuple(), tuple()),
     }
     MINOES_COORDS = (Coord(0, 0), Coord(1, 0), Coord(0, 1), Coord(1, 1))
     MINOES_COLOR = Color.YELLOW
@@ -73,13 +73,13 @@ class O_Tetrimino(TetrominoBase, metaclass=MetaTetromino):
 class I_Tetrimino(TetrominoBase, metaclass=MetaTetromino):
 
     SRS = {
-        Rotation.CLOCKWISE: (
+        Spin.CLOCKWISE: (
             (Coord(1, 0), Coord(-1, 0), Coord(2, 0), Coord(-1, -1), Coord(2, 2)),
             (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
             (Coord(-1, 0), Coord(1, 0), Coord(-2, 0), Coord(1, 1), Coord(-2, -2)),
             (Coord(0, -1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2)),
         ),
-        Rotation.COUNTER: (
+        Spin.COUNTER: (
             (Coord(0, -1), Coord(-1, -1), Coord(2, -1), Coord(-1, 1), Coord(2, -2)),
             (Coord(-1, 0), Coord(1, 0), Coord(-2, 0), Coord(1, 1), Coord(-2, -2)),
             (Coord(0, 1), Coord(1, 1), Coord(-2, 1), Coord(1, -1), Coord(-2, 2)),

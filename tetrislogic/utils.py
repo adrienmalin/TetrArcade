@@ -15,7 +15,7 @@ class Movement:
     DOWN = Coord(0, -1)
 
 
-class Rotation:
+class Spin:
 
     CLOCKWISE = 1
     COUNTER = -1
@@ -26,6 +26,14 @@ class T_Spin:
     NONE = ""
     MINI = "MINI\nT-SPIN"
     T_SPIN = "T-SPIN"
+
+
+class T_Slot:
+
+    A = 0
+    B = 1
+    C = 3
+    D = 2
 
 
 class Color:
