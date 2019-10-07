@@ -13,7 +13,7 @@ from .consts import (
     AUTOREPEAT_PERIOD,
     MATRIX_PIECE_COORD,
     SCORES,
-    LINES_CLEAR_NAME
+    LINES_CLEAR_NAME,
 )
 
 
@@ -82,7 +82,6 @@ class NextQueue(PieceContainer):
 
 
 class Stats:
-
     def _get_score(self):
         return self._score
 
@@ -302,10 +301,7 @@ class TetrisLogic:
         # Pattern phase
 
         # T-Spin
-        if (
-            type(self.matrix.piece) == T_Tetrimino
-            and self.matrix.piece.rotated_last
-        ):
+        if type(self.matrix.piece) == T_Tetrimino and self.matrix.piece.rotated_last:
             a = self.is_t_slot(T_Slot.A)
             b = self.is_t_slot(T_Slot.B)
             c = self.is_t_slot(T_Slot.C)
