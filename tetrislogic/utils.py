@@ -37,17 +37,3 @@ class Color:
     ORANGE = 4
     RED = 5
     YELLOW = 6
-
-
-class Phase:
-
-    STARTING = "STARTING"
-    GENERATION = "GENERATION"
-    FALLING = "FALLING"
-    LOCK = "LOCK"
-    PATTERN = "PATTERN"
-    ANIMATE = "ANIMATE"
-    ELIMINATE = "ELIMINATE"
-    COMPLETION = "COMPLETION"
-    PAUSED = "PAUSED"
-    OVER = "OVER"

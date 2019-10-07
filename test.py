@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from TetrArcade import TetrArcade, Phase, MinoSprite
+from TetrArcade import TetrArcade, MinoSprite, State
 from tetrislogic import Mino, Color, Coord
 
 game = TetrArcade()
@@ -15,16 +15,22 @@ game.pause()
 game.resume()
 game.move_right()
 game.hold()
+game.update(0)
+game.on_draw()
 game.rotate_clockwise()
 game.hold()
+game.update(0)
+game.on_draw()
 game.rotate_counter()
 for i in range(22):
     game.soft_drop()
     game.on_draw()
 game.lock_phase()
 game.hold()
+game.update(0)
+game.on_draw()
 game.matrix.sprites.update()
 game.on_draw()
-while game.phase != Phase.OVER:
+while game.state != State.OVER:
     game.hard_drop()
 game.on_draw()

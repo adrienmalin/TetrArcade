@@ -20,7 +20,7 @@ import os
 import itertools
 import configparser
 
-from tetrislogic import TetrisLogic, Color, Phase, Coord, I_Tetrimino, Movement
+from tetrislogic import TetrisLogic, Color, Coord, I_Tetrimino, Movement, AbstractTimer
 
 
 # Constants
@@ -92,8 +92,6 @@ TEXTURES = arcade.load_textures(
     ((i * MINO_SPRITE_SIZE, 0, MINO_SPRITE_SIZE, MINO_SPRITE_SIZE) for i in range(8)),
 )
 TEXTURES = {color: TEXTURES[i] for color, i in MINOES_COLOR_ID.items()}
-NORMAL_TEXTURE = 0
-LOCKED_TEXTURE = 1
 
 # Music
 MUSIC_DIR = os.path.join(RESOURCES_DIR, "musics")
@@ -119,10 +117,55 @@ else:
     )
 USER_PROFILE_DIR = os.path.join(USER_PROFILE_DIR, "TetrArcade")
 HIGH_SCORE_PATH = os.path.join(USER_PROFILE_DIR, ".high_score")
-CONF_PATH = os.path.join(USER_PROFILE_DIR, "TetrArcade.ini")
+CONF_PATH = os.path.join(USER_PROFILE_DIR, "config.ini")
+
+
+class Texture:
+
+    NORMAL = 0
+    LOCKED = 1
+
+
+class State:
+
+    STARTING = 0
+    PLAYING = 1
+    PAUSED = 2
+    OVER = 3
+
+
+class Timer(AbstractTimer):
+
+    def __init__(self):
+        self.tasks = {}
+
+    def postpone(self, task, delay):
+        _task = lambda _: task()
+        self.tasks[task] = _task
+        pyglet.clock.schedule_once(_task, delay)
+
+    def cancel(self, task):
+        try:
+            _task = self.tasks[task]
+        except KeyError:
+            pass
+        else:
+            arcade.unschedule(_task)
+            del self.tasks[task]
+
+    def reset(self, task, delay):
+        try:
+            _task = self.tasks[task]
+        except KeyError:
+            _task = lambda _: task()
+            self.tasks[task] = _task
+        else:
+            arcade.unschedule(_task)
+        pyglet.clock.schedule_once(_task, delay)
 
 
 class MinoSprite(arcade.Sprite):
+
     def __init__(self, mino, window, alpha):
         super().__init__()
         self.alpha = alpha
@@ -131,15 +174,15 @@ class MinoSprite(arcade.Sprite):
         self.append_texture(TEXTURES[Color.LOCKED])
         self.set_texture(0)
 
-    def update(self, x, y, texture=0):
+    def update(self, x, y):
         self.scale = self.window.scale
         size = MINO_SIZE * self.scale
         self.left = self.window.matrix.bg.left + x * size
         self.bottom = self.window.matrix.bg.bottom + y * size
-        self.set_texture(texture)
 
 
 class MinoesSprites(arcade.SpriteList):
+
     def resize(self, scale):
         for sprite in self:
             sprite.scale = scale
@@ -147,6 +190,7 @@ class MinoesSprites(arcade.SpriteList):
 
 
 class TetrominoSprites(MinoesSprites):
+
     def __init__(self, tetromino, window, alpha=NORMAL_ALPHA):
         super().__init__()
         self.tetromino = tetromino
@@ -155,13 +199,18 @@ class TetrominoSprites(MinoesSprites):
             mino.sprite = MinoSprite(mino, window, alpha)
             self.append(mino.sprite)
 
-    def update(self, texture=NORMAL_TEXTURE):
+    def update(self):
         for mino in self.tetromino:
             coord = mino.coord + self.tetromino.coord
-            mino.sprite.update(coord.x, coord.y, texture)
+            mino.sprite.update(coord.x, coord.y)
+
+    def set_texture(self, texture):
+        for mino in self.tetromino:
+            mino.sprite.set_texture(texture)
 
 
 class MatrixSprites(MinoesSprites):
+
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
@@ -180,10 +229,12 @@ class MatrixSprites(MinoesSprites):
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
+
+    timer = Timer()
+
     def __init__(self):
         locale.setlocale(locale.LC_ALL, "")
         self.highlight_texts = []
-        self.tasks = {}
 
         self.conf = configparser.ConfigParser()
         if self.conf.read(CONF_PATH):
@@ -229,6 +280,8 @@ class TetrArcade(TetrisLogic, arcade.Window):
         else:
             self.music = None
 
+        self.state = State.STARTING
+
     def new_conf(self):
         self.conf["WINDOW"] = {
             "width": WINDOW_WIDTH,
@@ -263,13 +316,13 @@ class TetrArcade(TetrisLogic, arcade.Window):
         for action, key in self.conf["KEYBOARD"].items():
             self.conf["KEYBOARD"][action] = key.upper()
         self.key_map = {
-            Phase.STARTING: {
+            State.STARTING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
                 getattr(
                     arcade.key, self.conf["KEYBOARD"]["fullscreen"]
                 ): self.toggle_fullscreen,
             },
-            Phase.FALLING: {
+            State.PLAYING: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["move left"]): self.move_left,
                 getattr(
                     arcade.key, self.conf["KEYBOARD"]["move right"]
@@ -288,32 +341,13 @@ class TetrArcade(TetrisLogic, arcade.Window):
                     arcade.key, self.conf["KEYBOARD"]["fullscreen"]
                 ): self.toggle_fullscreen,
             },
-            Phase.LOCK: {
-                getattr(arcade.key, self.conf["KEYBOARD"]["move left"]): self.move_left,
-                getattr(
-                    arcade.key, self.conf["KEYBOARD"]["move right"]
-                ): self.move_right,
-                getattr(arcade.key, self.conf["KEYBOARD"]["soft drop"]): self.soft_drop,
-                getattr(arcade.key, self.conf["KEYBOARD"]["hard drop"]): self.hard_drop,
-                getattr(
-                    arcade.key, self.conf["KEYBOARD"]["rotate clockwise"]
-                ): self.rotate_clockwise,
-                getattr(
-                    arcade.key, self.conf["KEYBOARD"]["rotate counter"]
-                ): self.rotate_counter,
-                getattr(arcade.key, self.conf["KEYBOARD"]["hold"]): self.hold,
-                getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.pause,
-                getattr(
-                    arcade.key, self.conf["KEYBOARD"]["fullscreen"]
-                ): self.toggle_fullscreen,
-            },
-            Phase.PAUSED: {
+            State.PAUSED: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["pause"]): self.resume,
                 getattr(
                     arcade.key, self.conf["KEYBOARD"]["fullscreen"]
                 ): self.toggle_fullscreen,
             },
-            Phase.OVER: {
+            State.OVER: {
                 getattr(arcade.key, self.conf["KEYBOARD"]["start"]): self.new_game,
                 getattr(
                     arcade.key, self.conf["KEYBOARD"]["fullscreen"]
@@ -366,6 +400,8 @@ AGAIN""".format(
             self.music.seek(0)
             self.music.play()
 
+        self.state = State.PLAYING
+
     def on_new_level(self, level):
         self.show_text("LEVEL\n{:n}".format(level))
 
@@ -376,6 +412,12 @@ AGAIN""".format(
         next_pieces[-1].sprites = TetrominoSprites(next_pieces[-1], self)
         for piece, coord in zip(next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
+
+    def on_falling_phase(self, falling_piece, ghost_piece):
+        falling_piece.sprites.set_texture(Texture.NORMAL)
+
+    def on_lock_phase(self, falling_piece):
+        falling_piece.sprites.set_texture(Texture.LOCKED)
 
     def on_locks_down(self, matrix, locked_piece):
         for mino in locked_piece:
@@ -417,59 +459,57 @@ AGAIN""".format(
         if combo_score:
             self.show_text("COMBO x{:n}\n{:n}".format(nb_combo, combo_score))
 
-    def on_hold(self, held_piece, falling_piece, ghost_piece):
+    def on_hold(self, held_piece):
         held_piece.coord = HELD_PIECE_COORD
         if type(held_piece) == I_Tetrimino:
             held_piece.coord += Movement.LEFT
-        ghost_piece.sprites = TetrominoSprites(ghost_piece, self, GHOST_ALPHA)
 
-    def pause(self):
-        super().pause()
+    def on_pause(self):
+        self.state = State.PAUSED
         if self.music:
             self.music.pause()
 
     def resume(self):
-        super().resume()
         if self.music:
             self.music.play()
+        self.state = State.PLAYING
 
     def on_game_over(self):
+        self.state = State.OVER
         if self.music:
             self.music.pause()
 
     def on_key_press(self, key, modifiers):
-        for key_or_modifier in (key, modifiers):
-            try:
-                action = self.key_map[self.phase][key_or_modifier]
-            except KeyError:
-                pass
-            else:
-                self.do_action(action)
+        try:
+            action = self.key_map[self.state][key]
+        except KeyError:
+            return
+        else:
+            self.do_action(action)
 
     def on_key_release(self, key, modifiers):
-        for key_or_modifier in (key, modifiers):
-            try:
-                action = self.key_map[self.phase][key_or_modifier]
-            except KeyError:
-                pass
-            else:
-                self.remove_action(action)
+        try:
+            action = self.key_map[self.state][key]
+        except KeyError:
+            return
+        else:
+            self.remove_action(action)
 
     def show_text(self, text):
         self.highlight_texts.append(text)
-        self.restart(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
+        self.timer.postpone(self.del_highlight_text, HIGHLIGHT_TEXT_DISPLAY_DELAY)
 
     def del_highlight_text(self):
         if self.highlight_texts:
             self.highlight_texts.pop(0)
         else:
-            self.stop(self.del_highlight_text)
+            self.timer.cancel(self.del_highlight_text)
 
     def on_draw(self):
         arcade.start_render()
         self.bg.draw()
 
-        if self.phase not in (Phase.STARTING, Phase.PAUSED):
+        if self.state not in (State.STARTING, State.PAUSED):
             self.matrix.bg.draw()
             self.matrix.sprites.draw()
 
@@ -523,11 +563,11 @@ AGAIN""".format(
                 exploding_minoes.draw()
 
         highlight_text = {
-            Phase.STARTING: self.start_text,
-            Phase.FALLING: self.highlight_texts[0] if self.highlight_texts else "",
-            Phase.PAUSED: self.pause_text,
-            Phase.OVER: self.game_over_text,
-        }.get(self.phase, "")
+            State.STARTING: self.start_text,
+            State.PLAYING: self.highlight_texts[0] if self.highlight_texts else "",
+            State.PAUSED: self.pause_text,
+            State.OVER: self.game_over_text,
+        }.get(self.state, "")
         if highlight_text:
             arcade.draw_text(
                 text=highlight_text,
@@ -598,37 +638,12 @@ High score could not be saved:
                 + str(e)
             )
 
-    def start(self, task, period):
-        _task = lambda _: task()
-        self.tasks[task] = _task
-        arcade.schedule(_task, period)
-
-    def stop(self, task):
-        try:
-            _task = self.tasks[task]
-        except KeyError:
-            pass
-        else:
-            arcade.unschedule(_task)
-            del self.tasks[task]
-
-    def restart(self, task, period):
-        try:
-            _task = self.tasks[task]
-        except KeyError:
-            _task = lambda _: task()
-            self.tasks[task] = _task
-        else:
-            arcade.unschedule(_task)
-        arcade.schedule(_task, period)
-
     def update(self, delta_time):
         for piece in [self.held.piece, self.matrix.ghost] + self.next.pieces:
             if piece:
                 piece.sprites.update()
         if self.matrix.piece:
-            texture = LOCKED_TEXTURE if self.phase == Phase.LOCK else NORMAL_TEXTURE
-            self.matrix.piece.sprites.update(texture=texture)
+            self.matrix.piece.sprites.update()
         for exploding_minoes in self.exploding_minoes:
             if exploding_minoes:
                 exploding_minoes.update()

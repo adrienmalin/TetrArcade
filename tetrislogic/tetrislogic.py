@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pickle
 
-from .utils import Coord, Movement, Rotation, T_Spin, Phase
+from .utils import Coord, Movement, Rotation, T_Spin
 from .tetromino import Tetromino, T_Tetrimino
 from .consts import (
     LINES,
@@ -18,6 +18,18 @@ from .consts import (
 LINES_CLEAR_NAME = "LINES_CLEAR_NAME"
 CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
+
+class AbstractTimer:
+
+    def postpone(task, delay):
+        raise Warning("AbstractTimer.postpone is not implemented.")
+
+    def cancel(self, task):
+        raise Warning("AbstractTimer.stop is not implemented.")
+
+    def reset(self, task, period):
+        self.timer.cancel(task)
+        self.timer.postpone(task, period)
 
 class PieceContainer:
     def __init__(self):
@@ -47,6 +59,18 @@ class Matrix(list, PieceContainer):
     def cell_is_free(self, coord):
         return (
             0 <= coord.x < self.collumns and 0 <= coord.y and not self[coord.y][coord.x]
+        )
+
+    def space_to_move(self, potential_coord, minoes_coord):
+        return all(
+            self.cell_is_free(potential_coord + mino_coord)
+            for mino_coord in minoes_coord
+        )
+
+    def space_to_fall(self):
+        return self.space_to_move(
+            self.piece.coord + Movement.DOWN,
+            (mino.coord for mino in self.piece),
         )
 
 
@@ -133,17 +157,16 @@ class Stats:
 
 class TetrisLogic:
 
-    LINES = LINES
-    COLLUMNS = COLLUMNS
-    NEXT_PIECES = NEXT_PIECES
+    # These class attributes can be redefined on inheritance
     AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
     AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
     MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
 
+    timer = AbstractTimer()
+
     def __init__(self, lines=LINES, collumns=COLLUMNS, next_pieces=NEXT_PIECES):
         self.stats = Stats()
         self.load_high_score()
-        self.phase = Phase.STARTING
         self.held = HoldQueue()
         self.matrix = Matrix(lines, collumns)
         self.next = NextQueue(next_pieces)
@@ -154,12 +177,11 @@ class TetrisLogic:
         self.stats.new_game(level)
 
         self.pressed_actions = []
-        self.auto_repeat = False
 
         self.matrix.reset()
         self.next.pieces = [Tetromino() for n in range(self.next.nb_pieces)]
         self.held.piece = None
-        self.start(self.stats.update_time, 1)
+        self.timer.postpone(self.stats.update_time, 1)
 
         self.on_new_game(self.next.pieces)
         self.new_level()
@@ -175,13 +197,15 @@ class TetrisLogic:
     def on_new_level(self, level):
         pass
 
-    def generation_phase(self):
-        self.phase = Phase.GENERATION
-        self.matrix.piece = self.next.pieces.pop(0)
-        self.next.pieces.append(Tetromino())
+    def generation_phase(self, held_piece=None):
+        if not held_piece:
+            self.matrix.piece = self.next.pieces.pop(0)
+            self.next.pieces.append(Tetromino())
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.refresh_ghost()
+        if self.pressed_actions:
+            self.timer.postpone(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         self.on_generation_phase(
             self.matrix, self.matrix.piece, self.matrix.ghost, self.next.pieces
@@ -195,7 +219,7 @@ class TetrisLogic:
         self.matrix.ghost.coord = self.matrix.piece.coord
         for ghost_mino, current_mino in zip(self.matrix.ghost, self.matrix.piece):
             ghost_mino.coord = current_mino.coord
-        while self.space_to_move(
+        while self.matrix.space_to_move(
             self.matrix.ghost.coord + Movement.DOWN,
             (mino.coord for mino in self.matrix.ghost),
         ):
@@ -205,23 +229,26 @@ class TetrisLogic:
         pass
 
     def falling_phase(self):
-        self.phase = Phase.FALLING
-        self.stop(self.locks_down)
-        self.start(self.fall, self.stats.fall_delay)
+        self.timer.cancel(self.lock_phase)
+        self.matrix.piece.locked = False
+        self.timer.postpone(self.lock_phase, self.stats.fall_delay)
         self.on_falling_phase(self.matrix.piece, self.matrix.ghost)
-        if self.pressed_actions:
-            self.start(self.repeat_action, self.AUTOREPEAT_DELAY)
 
     def on_falling_phase(self, falling_piece, ghost_piece):
         pass
 
-    def fall(self):
-        self.move(Movement.DOWN)
+    def lock_phase(self):
+        self.matrix.piece.locked = True
+        if not self.move(Movement.DOWN):
+            self.locks_down()
+
+    def on_lock_phase(self, falling_piece):
+        pass
 
     def move(self, movement, rotated_coords=None, lock=True):
         potential_coord = self.matrix.piece.coord + movement
         portential_minoes_coords = rotated_coords or (mino.coord for mino in self.matrix.piece)
-        if self.space_to_move(potential_coord, portential_minoes_coords):
+        if self.matrix.space_to_move(potential_coord, portential_minoes_coords):
             self.matrix.piece.coord = potential_coord
             if rotated_coords:
                 for mino, coord in zip(self.matrix.piece, rotated_coords):
@@ -229,19 +256,15 @@ class TetrisLogic:
             self.refresh_ghost()
             if movement != Movement.DOWN:
                 self.matrix.piece.last_rotation_point = None
-            if self.space_to_fall:
+            if self.matrix.space_to_fall:
                 self.falling_phase()
             else:
-                self.lock_phase()
+                self.on_lock_phase(self.matrix.piece)
+                if self.matrix.piece.locked:
+                    self.timer.reset(self.locks_down, self.stats.lock_delay)
             return True
         else:
             return False
-
-    def space_to_fall(self):
-        return self.space_to_move(
-            self.matrix.piece.coord + Movement.DOWN,
-            (mino.coord for mino in self.matrix.piece),
-        )
 
     def rotate(self, rotation):
         rotated_coords = tuple(
@@ -260,24 +283,7 @@ class TetrisLogic:
         else:
             return False
 
-    def lock_phase(self):
-        self.phase = Phase.LOCK
-        self.on_lock_phase(self.matrix.piece)
-        self.restart(self.locks_down, self.stats.lock_delay)
-
-    def on_lock_phase(self, locked_piece):
-        pass
-
-    def space_to_move(self, potential_coord, minoes_coord):
-        return all(
-            self.matrix.cell_is_free(potential_coord + mino_coord)
-            for mino_coord in minoes_coord
-        )
-
     def locks_down(self):
-        self.stop(self.locks_down)
-        self.stop(self.fall)
-
         # Game over
         if all(
             (mino.coord + self.matrix.piece.coord).y >= self.matrix.lines
@@ -286,9 +292,7 @@ class TetrisLogic:
             self.game_over()
             return
 
-        if self.pressed_actions:
-            self.auto_repeat = False
-            self.stop(self.repeat_action)
+        self.timer.cancel(self.repeat_action)
 
         for mino in self.matrix.piece:
             coord = mino.coord + self.matrix.piece.coord
@@ -297,7 +301,7 @@ class TetrisLogic:
 
         self.on_locks_down(self.matrix, self.matrix.piece)
 
-        self.phase = Phase.PATTERN
+        #Pattern phase
 
         # T-Spin
         if (
@@ -326,16 +330,18 @@ class TetrisLogic:
         if lines_cleared:
             self.stats.lines_cleared += lines_cleared
 
-        self.phase = Phase.ANIMATE
+        # Animate phase
+
         self.on_animate_phase(self.matrix, self.lines_to_remove)
 
-        self.phase = Phase.ELIMINATE
+        # Eliminate phase
         self.on_eliminate_phase(self.matrix, self.lines_to_remove)
         for y in self.lines_to_remove:
             self.matrix.pop(y)
             self.matrix.append_new_line()
 
-        self.phase = Phase.COMPLETION
+        # Completion phase
+
         pattern_name, pattern_score, nb_combo, combo_score = self.stats.locks_down(
             t_spin, lines_cleared
         )
@@ -379,7 +385,8 @@ class TetrisLogic:
         return moved
 
     def hard_drop(self):
-        self.stop(self.locks_down)
+        self.timer.cancel(self.lock_phase)
+        self.timer.cancel(self.locks_down)
         while self.move(Movement.DOWN, lock=False):
             self.stats.score += 2
         self.locks_down()
@@ -389,23 +396,16 @@ class TetrisLogic:
             return
 
         self.matrix.piece.hold_enabled = False
-        self.stop(self.locks_down)
-        self.stop(self.fall)
+        self.timer.cancel(self.lock_phase)
         self.matrix.piece, self.held.piece = self.held.piece, self.matrix.piece
 
         for mino, coord in zip(self.held.piece, self.held.piece.MINOES_COORDS):
             mino.coord = coord
 
-        if self.matrix.piece:
-            self.matrix.piece.coord = self.MATRIX_PIECE_COORD
-            self.matrix.ghost = self.matrix.piece.ghost()
-            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
-            self.falling_phase()
-        else:
-            self.generation_phase()
-            self.on_hold(self.held.piece, self.matrix.piece, self.matrix.ghost)
+        self.on_hold(self.held.piece)
+        self.generation_phase(self.matrix.piece)
 
-    def on_hold(self, held_piece, falling_piece, ghost_piece):
+    def on_hold(self, held_piece):
         pass
 
     T_SLOT_COORDS = (Coord(-1, 1), Coord(1, 1), Coord(-1, 1), Coord(-1, -1))
@@ -418,21 +418,25 @@ class TetrisLogic:
         return not self.matrix.cell_is_free(t_slot_coord)
 
     def pause(self):
-        self.phase = Phase.PAUSED
         self.stop_all()
         self.pressed_actions = []
-        self.auto_repeat = False
-        self.stop(self.repeat_action)
+        self.timer.cancel(self.repeat_action)
+        self.on_pause()
+
+    def on_pause(self):
+        pass
 
     def resume(self):
-        self.phase = Phase.FALLING
-        self.start(self.fall, self.stats.fall_delay)
-        if self.phase == Phase.LOCK:
-            self.start(self.locks_down, self.stats.lock_delay)
-        self.start(self.stats.update_time, 1)
+        self.timer.postpone(self.lock_phase, self.stats.fall_delay)
+        if self.matrix.piece.locked:
+            self.timer.postpone(self.locks_down, self.stats.lock_delay)
+        self.timer.postpone(self.stats.update_time, 1)
+        self.on_resume()
+
+    def on_resume(self):
+        pass
 
     def game_over(self):
-        self.phase = Phase.OVER
         self.stop_all()
         self.save_high_score()
         self.on_game_over()
@@ -441,30 +445,26 @@ class TetrisLogic:
         pass
 
     def stop_all(self):
-        self.stop(self.fall)
-        self.stop(self.locks_down)
-        self.stop(self.stats.update_time)
+        self.timer.cancel(self.lock_phase)
+        self.timer.cancel(self.locks_down)
+        self.timer.cancel(self.stats.update_time)
 
     def do_action(self, action):
         action()
         if action in self.autorepeatable_actions:
-            self.auto_repeat = False
             self.pressed_actions.append(action)
             if action == self.soft_drop:
                 delay = self.stats.fall_delay / 20
             else:
                 delay = self.AUTOREPEAT_DELAY
-            self.restart(self.repeat_action, delay)
+            self.timer.reset(self.repeat_action, delay)
 
     def repeat_action(self):
-        if self.pressed_actions:
-            self.pressed_actions[-1]()
-            if not self.auto_repeat:
-                self.auto_repeat = True
-                self.restart(self.repeat_action, self.AUTOREPEAT_PERIOD)
-        else:
-            self.auto_repeat = False
-            self.stop(self.repeat_action)
+        if not self.pressed_actions:
+            return
+
+        self.pressed_actions[-1]()
+        self.timer.postpone(self.repeat_action, self.AUTOREPEAT_PERIOD)
 
     def remove_action(self, action):
         if action in self.autorepeatable_actions:
@@ -492,13 +492,3 @@ High score is set to 0"""
         crypted_high_score = self.stats.high_score ^ CRYPT_KEY
         crypted_high_score = pickle.dumps(crypted_high_score)
         return crypted_high_score
-
-    def start(task, period):
-        raise Warning("TetrisLogic.start is not implemented.")
-
-    def stop(self, task):
-        raise Warning("TetrisLogic.stop is not implemented.")
-
-    def restart(self, task, period):
-        self.stop(task)
-        self.start(task, period)
