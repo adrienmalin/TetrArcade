@@ -209,16 +209,11 @@ class TetrisLogic:
         self.matrix.piece.coord = self.MATRIX_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.refresh_ghost()
-        # if self.pressed_actions:
-        #    self.timer.postpone(self.repeat_action, self.AUTOREPEAT_DELAY)
 
         self.on_generation_phase(
             self.matrix, self.matrix.piece, self.matrix.ghost, self.next.pieces
         )
-        if self.move(Movement.DOWN):
-            self.falling_phase()
-        else:
-            self.game_over()
+        self.falling_phase()
 
     def refresh_ghost(self):
         self.matrix.ghost.coord = self.matrix.piece.coord
