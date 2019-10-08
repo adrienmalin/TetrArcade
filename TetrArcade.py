@@ -23,7 +23,14 @@ import os
 import itertools
 import configparser
 
-from tetrislogic import TetrisLogic, Color, Coord, I_Tetrimino, Movement, AbstractScheduler
+from tetrislogic import (
+    TetrisLogic,
+    Color,
+    Coord,
+    I_Tetrimino,
+    Movement,
+    AbstractScheduler,
+)
 
 
 # Constants
@@ -175,20 +182,24 @@ class MinoSprite(arcade.Sprite):
         self.append_texture(TEXTURES[mino.color])
         self.append_texture(TEXTURES[Color.LOCKED])
         self.set_texture(0)
+        self.resize()
+
+    def resize(self):
+        self.scale = self.window.scale
+        self.size = MINO_SIZE * self.window.scale
 
     def update(self, x, y):
-        size = MINO_SIZE * self.window.scale
-        self.left = self.window.matrix.bg.left + x * size
-        self.bottom = self.window.matrix.bg.bottom + y * size
+        self.left = self.window.matrix.bg.left + x * self.size
+        self.bottom = self.window.matrix.bg.bottom + y * self.size
 
     def fall(self, lines_cleared):
         self.bottom -= MINO_SIZE * self.window.scale * lines_cleared
 
 
 class MinoesSprites(arcade.SpriteList):
-    def resize(self, scale):
+    def resize(self):
         for sprite in self:
-            sprite.scale = scale
+            sprite.resize()
         self.update()
 
 
@@ -197,6 +208,7 @@ class TetrominoSprites(MinoesSprites):
         super().__init__()
         self.tetromino = tetromino
         self.alpha = alpha
+        self.window = window
         for mino in tetromino:
             mino.sprite = MinoSprite(mino, window, alpha)
             self.append(mino.sprite)
@@ -209,6 +221,7 @@ class TetrominoSprites(MinoesSprites):
     def set_texture(self, texture):
         for mino in self.tetromino:
             mino.sprite.set_texture(texture)
+            mino.sprite.scale = self.window.scale
 
 
 class MatrixSprites(MinoesSprites):
@@ -227,6 +240,7 @@ class MatrixSprites(MinoesSprites):
             for mino in self.matrix[y]:
                 if mino:
                     self.remove(mino.sprite)
+
 
 class TetrArcade(TetrisLogic, arcade.Window):
     """Tetris clone with arcade GUI library"""
@@ -614,7 +628,7 @@ AGAIN""".format(
         self.matrix.bg.left = int(self.matrix.bg.left)
         self.matrix.bg.top = int(self.matrix.bg.top)
 
-        self.matrix.sprites.resize(self.scale)
+        self.matrix.sprites.resize()
 
         for tetromino in [
             self.held.piece,
@@ -622,7 +636,7 @@ AGAIN""".format(
             self.matrix.ghost,
         ] + self.next.pieces:
             if tetromino:
-                tetromino.sprites.resize(self.scale)
+                tetromino.sprites.resize()
 
     def load_high_score(self):
         try:
