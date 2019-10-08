@@ -29,8 +29,6 @@ game.lock_phase()
 game.hold()
 game.update(0)
 game.on_draw()
-game.matrix.sprites.update()
-game.on_draw()
 while game.state != State.OVER:
     game.hard_drop()
 game.on_draw()

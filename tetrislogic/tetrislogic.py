@@ -255,16 +255,13 @@ class TetrisLogic:
         self.timer.cancel(self.locks_down)
         self.matrix.piece.locked = False
         self.timer.postpone(self.lock_phase, self.stats.fall_delay)
-        self.on_falling_phase(self.matrix.piece)
+        self.on_falling_phase(self.matrix.piece, self.matrix.ghost)
 
-    def on_falling_phase(self, falling_piece):
+    def on_falling_phase(self, falling_piece, ghost_piece):
         pass
 
     def lock_phase(self):
         self.move(Movement.DOWN)
-
-    def on_locked(self, falling_piece):
-        pass
 
     def move(self, movement, rotated_coords=None, lock=True):
         potential_coord = self.matrix.piece.coord + movement
@@ -283,11 +280,14 @@ class TetrisLogic:
                 self.falling_phase()
             else:
                 self.matrix.piece.locked = True
-                self.on_locked(self.matrix.piece)
+                self.on_locked(self.matrix.piece, self.matrix.ghost)
                 self.timer.reset(self.locks_down, self.stats.lock_delay)
             return True
         else:
             return False
+
+    def on_locked(self, falling_piece, ghost_piece):
+        pass
 
     def rotate(self, spin):
         rotated_coords = tuple(mino.coord @ spin for mino in self.matrix.piece)
@@ -343,24 +343,25 @@ class TetrisLogic:
         else:
             t_spin = T_Spin.NONE
 
-        # Clear complete lines
-        self.lines_to_remove = []
+        # Complete lines
+        lines_to_remove = []
         for y, line in reversed(list(enumerate(self.matrix))):
             if all(mino for mino in line):
-                self.lines_to_remove.append(y)
-        lines_cleared = len(self.lines_to_remove)
+                lines_to_remove.append(y)
+
+        lines_cleared = len(lines_to_remove)
         if lines_cleared:
             self.stats.lines_cleared += lines_cleared
 
-        # Animate phase
+            # Animate phase
 
-        self.on_animate_phase(self.matrix, self.lines_to_remove)
+            self.on_animate_phase(self.matrix, lines_to_remove)
 
-        # Eliminate phase
-        self.on_eliminate_phase(self.matrix, self.lines_to_remove)
-        for y in self.lines_to_remove:
-            self.matrix.pop(y)
-            self.matrix.append_new_line()
+            # Eliminate phase
+            self.on_eliminate_phase(self.matrix, lines_to_remove)
+            for y in lines_to_remove:
+                self.matrix.pop(y)
+                self.matrix.append_new_line()
 
         # Completion phase
 

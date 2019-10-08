@@ -38,6 +38,7 @@ FALL_DELAY = 1
 AUTOREPEAT_DELAY = 0.300
 AUTOREPEAT_PERIOD = 0.010
 PARTICULE_ACCELERATION = 1.1
+EXPLOSION_ANIMATION = 1
 
 # Piece init coord
 MATRIX_PIECE_COORD = Coord(4, LINES)
@@ -176,10 +177,12 @@ class MinoSprite(arcade.Sprite):
         self.set_texture(0)
 
     def update(self, x, y):
-        self.scale = self.window.scale
-        size = MINO_SIZE * self.scale
+        size = MINO_SIZE * self.window.scale
         self.left = self.window.matrix.bg.left + x * size
         self.bottom = self.window.matrix.bg.bottom + y * size
+
+    def fall(self, lines_cleared):
+        self.bottom -= MINO_SIZE * self.window.scale * lines_cleared
 
 
 class MinoesSprites(arcade.SpriteList):
@@ -206,14 +209,12 @@ class TetrominoSprites(MinoesSprites):
     def set_texture(self, texture):
         for mino in self.tetromino:
             mino.sprite.set_texture(texture)
-        self.update()
 
 
 class MatrixSprites(MinoesSprites):
     def __init__(self, matrix):
         super().__init__()
         self.matrix = matrix
-        self.update()
 
     def update(self):
         for y, line in enumerate(self.matrix):
@@ -221,11 +222,11 @@ class MatrixSprites(MinoesSprites):
                 if mino:
                     mino.sprite.update(x, y)
 
-    def remove_line(self, y):
-        for mino in self.matrix[y]:
-            if mino:
-                self.remove(mino.sprite)
-
+    def remove_lines(self, lines_to_remove):
+        for y in lines_to_remove:
+            for mino in self.matrix[y]:
+                if mino:
+                    self.remove(mino.sprite)
 
 class TetrArcade(TetrisLogic, arcade.Window):
     """Tetris clone with arcade GUI library"""
@@ -392,7 +393,7 @@ AGAIN""".format(
     def on_new_game(self, matrix, next_pieces):
         self.highlight_texts = []
 
-        matrix.sprites = MatrixSprites(self.matrix)
+        self.matrix.sprites = MatrixSprites(matrix)
         for piece in next_pieces:
             piece.sprites = TetrominoSprites(piece, self)
 
@@ -412,12 +413,18 @@ AGAIN""".format(
         next_pieces[-1].sprites = TetrominoSprites(next_pieces[-1], self)
         for piece, coord in zip(next_pieces, NEXT_PIECES_COORDS):
             piece.coord = coord
+        for piece in [falling_piece, ghost_piece] + next_pieces:
+            piece.sprites.update()
 
-    def on_falling_phase(self, falling_piece):
+    def on_falling_phase(self, falling_piece, ghost_piece):
         falling_piece.sprites.set_texture(Texture.NORMAL)
+        falling_piece.sprites.update()
+        ghost_piece.sprites.update()
 
-    def on_locked(self, falling_piece):
+    def on_locked(self, falling_piece, ghost_piece):
         falling_piece.sprites.set_texture(Texture.LOCKED)
+        falling_piece.sprites.update()
+        ghost_piece.sprites.update()
 
     def on_locks_down(self, matrix, falling_piece):
         falling_piece.sprites.set_texture(Texture.NORMAL)
@@ -425,6 +432,10 @@ AGAIN""".format(
             matrix.sprites.append(mino.sprite)
 
     def on_animate_phase(self, matrix, lines_to_remove):
+        if not lines_to_remove:
+            return
+
+        self.timer.cancel(self.clean_particules)
         for y in lines_to_remove:
             line_textures = tuple(TEXTURES[mino.color] for mino in matrix[y])
             self.exploding_minoes[y] = arcade.Emitter(
@@ -437,22 +448,20 @@ AGAIN""".format(
                         2 * COLLUMNS * MINO_SIZE,
                         5 * MINO_SIZE,
                     ),
-                    lifetime=0.2,
+                    lifetime=EXPLOSION_ANIMATION,
                     center_xy=arcade.rand_on_line((0, 0), (matrix.bg.width, 0)),
                     scale=self.scale,
                     alpha=NORMAL_ALPHA,
                     change_angle=2,
-                    mutation_callback=self.speed_up_particule,
                 ),
             )
+        self.timer.postpone(self.clean_particules, EXPLOSION_ANIMATION)
 
-    def speed_up_particule(self, particule):
-        particule.change_x *= PARTICULE_ACCELERATION
-        particule.change_y *= PARTICULE_ACCELERATION
+    def clean_particules(self):
+        self.exploding_minoes = [None for y in range(LINES)]
 
     def on_eliminate_phase(self, matrix, lines_to_remove):
-        for y in lines_to_remove:
-            matrix.sprites.remove_line(y)
+        matrix.sprites.remove_lines(lines_to_remove)
 
     def on_completion_phase(self, pattern_name, pattern_score, nb_combo, combo_score):
         if pattern_score:
@@ -464,6 +473,7 @@ AGAIN""".format(
         held_piece.coord = HELD_PIECE_COORD
         if type(held_piece) == I_Tetrimino:
             held_piece.coord += Movement.LEFT
+        held_piece.sprites.update()
 
     def on_pause(self):
         self.state = State.PAUSED
@@ -640,13 +650,6 @@ High score could not be saved:
             )
 
     def update(self, delta_time):
-        for piece in [
-            self.held.piece,
-            self.matrix.piece,
-            self.matrix.ghost,
-        ] + self.next.pieces:
-            if piece:
-                piece.sprites.update()
         for exploding_minoes in self.exploding_minoes:
             if exploding_minoes:
                 exploding_minoes.update()
