@@ -487,6 +487,7 @@ AGAIN""".format(
         held_piece.coord = HELD_PIECE_COORD
         if type(held_piece) == I_Tetrimino:
             held_piece.coord += Movement.LEFT
+        held_piece.sprites.set_texture(Texture.NORMAL)
         held_piece.sprites.update()
 
     def on_pause(self):
