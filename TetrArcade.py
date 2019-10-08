@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""Tetris clone with arcade GUI library"""
+
+
 import sys
 import random
 
@@ -225,6 +228,7 @@ class MatrixSprites(MinoesSprites):
 
 
 class TetrArcade(TetrisLogic, arcade.Window):
+    """Tetris clone with arcade GUI library"""
 
     timer = Scheduler()
 

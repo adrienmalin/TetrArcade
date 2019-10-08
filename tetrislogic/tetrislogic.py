@@ -27,6 +27,7 @@ CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 class AbstractScheduler:
     """Scheduler class to be implemented"""
+
     def postpone(task, delay):
         """schedule callable task once after delay in second"""
         raise Warning("AbstractScheduler.postpone is not implemented.")
@@ -48,11 +49,13 @@ class AbstractPieceContainer:
 
 class HoldQueue(AbstractPieceContainer):
     """the storage place where players can Hold any falling Tetrimino for use later"""
+
     pass
 
 
 class Matrix(list, AbstractPieceContainer):
     """the rectangular arrangement of cells creating the active game area, usually 10 columns wide by 20 rows high."""
+
     def __init__(self, lines, collumns):
         list.__init__(self)
         AbstractPieceContainer.__init__(self)
@@ -88,6 +91,7 @@ class Matrix(list, AbstractPieceContainer):
 
 class NextQueue(AbstractPieceContainer):
     """Displays the Next Tetrimino(s) to be placed (generated) just above the Matrix"""
+
     def __init__(self, nb_pieces):
         super().__init__()
         self.nb_pieces = nb_pieces
@@ -103,6 +107,7 @@ class NextQueue(AbstractPieceContainer):
 
 class Stats:
     """Game statistics"""
+
     def _get_score(self):
         return self._score
 
@@ -225,7 +230,12 @@ class TetrisLogic:
         self.on_generation_phase(
             self.matrix, self.matrix.piece, self.matrix.ghost, self.next.pieces
         )
-        self.falling_phase()
+        if self.matrix.space_to_move(
+            self.matrix.piece.coord, (mino.coord for mino in self.matrix.piece)
+        ):
+            self.falling_phase()
+        else:
+            self.game_over()
 
     def refresh_ghost(self):
         self.matrix.ghost.coord = self.matrix.piece.coord
@@ -296,7 +306,6 @@ class TetrisLogic:
             return False
 
     def locks_down(self):
-        # self.timer.cancel(self.repeat_action)
         self.timer.cancel(self.lock_phase)
 
         # Game over
