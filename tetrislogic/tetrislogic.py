@@ -262,7 +262,7 @@ class TetrisLogic:
 
     def rotate(self, spin):
         rotated_coords = tuple(
-            Coord(spin * mino.coord.y, -spin * mino.coord.x)
+            mino.coord.rotate(spin)
             for mino in self.matrix.piece
         )
         for rotation_point, liberty_degree in enumerate(

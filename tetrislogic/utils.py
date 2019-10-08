@@ -7,6 +7,9 @@ class Coord:
     def __add__(self, other):
         return Coord(self.x + other.x, self.y + other.y)
 
+    def rotate(self, spin):
+        return Coord(spin * self.y, -spin * self.x)
+
 
 class Movement:
 
