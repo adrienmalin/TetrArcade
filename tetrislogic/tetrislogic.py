@@ -261,10 +261,7 @@ class TetrisLogic:
             return False
 
     def rotate(self, spin):
-        rotated_coords = tuple(
-            mino.coord @ spin
-            for mino in self.matrix.piece
-        )
+        rotated_coords = tuple(mino.coord @ spin for mino in self.matrix.piece)
         for rotation_point, liberty_degree in enumerate(
             self.matrix.piece.SRS[spin][self.matrix.piece.orientation], start=1
         ):
