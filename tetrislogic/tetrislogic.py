@@ -16,7 +16,7 @@ from .consts import (
     FALL_DELAY,
     AUTOREPEAT_DELAY,
     AUTOREPEAT_PERIOD,
-    MATRIX_PIECE_COORD,
+    FALLING_PIECE_COORD,
     SCORES,
     LINES_CLEAR_NAME,
 )
@@ -26,18 +26,19 @@ CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 
 class AbstractScheduler:
+    """Scheduler class to be implemented"""
     def postpone(task, delay):
         """schedule callable task once after delay in second"""
-        raise Warning("AbstractTimer.postpone is not implemented.")
+        raise Warning("AbstractScheduler.postpone is not implemented.")
 
     def cancel(self, task):
         """cancel task if schedule of pass"""
-        raise Warning("AbstractTimer.stop is not implemented.")
+        raise Warning("AbstractScheduler.stop is not implemented.")
 
-    def reset(self, task, period):
+    def reset(self, task, delay):
         """cancel and reschedule task"""
         self.timer.cancel(task)
-        self.timer.postpone(task, period)
+        self.timer.postpone(task, delay)
 
 
 class AbstractPieceContainer:
@@ -46,10 +47,12 @@ class AbstractPieceContainer:
 
 
 class HoldQueue(AbstractPieceContainer):
+    """the storage place where players can Hold any falling Tetrimino for use later"""
     pass
 
 
 class Matrix(list, AbstractPieceContainer):
+    """the rectangular arrangement of cells creating the active game area, usually 10 columns wide by 20 rows high."""
     def __init__(self, lines, collumns):
         list.__init__(self)
         AbstractPieceContainer.__init__(self)
@@ -57,7 +60,8 @@ class Matrix(list, AbstractPieceContainer):
         self.collumns = collumns
         self.ghost = None
 
-    def reset(self):
+    def new_game(self):
+        """Removes all minoes in matrix"""
         self.clear()
         for y in range(self.lines + 3):
             self.append_new_line()
@@ -83,13 +87,22 @@ class Matrix(list, AbstractPieceContainer):
 
 
 class NextQueue(AbstractPieceContainer):
+    """Displays the Next Tetrimino(s) to be placed (generated) just above the Matrix"""
     def __init__(self, nb_pieces):
         super().__init__()
         self.nb_pieces = nb_pieces
         self.pieces = []
 
+    def new_game(self):
+        self.pieces = [Tetromino() for n in range(self.nb_pieces)]
+
+    def generation_phase(self):
+        self.pieces.append(Tetromino())
+        return self.pieces.pop(0)
+
 
 class Stats:
+    """Game statistics"""
     def _get_score(self):
         return self._score
 
@@ -160,7 +173,7 @@ class TetrisLogic:
     # These class attributes can be redefined on inheritance
     AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
     AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
-    MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
+    FALLING_PIECE_COORD = FALLING_PIECE_COORD
 
     timer = AbstractScheduler()
 
@@ -181,8 +194,8 @@ class TetrisLogic:
 
         self.pressed_actions = []
 
-        self.matrix.reset()
-        self.next.pieces = [Tetromino() for n in range(self.next.nb_pieces)]
+        self.matrix.new_game()
+        self.next.new_game()
         self.held.piece = None
         self.timer.postpone(self.stats.update_time, 1)
 
@@ -204,9 +217,8 @@ class TetrisLogic:
 
     def generation_phase(self, held_piece=None):
         if not held_piece:
-            self.matrix.piece = self.next.pieces.pop(0)
-            self.next.pieces.append(Tetromino())
-        self.matrix.piece.coord = self.MATRIX_PIECE_COORD
+            self.matrix.piece = self.next.generation_phase()
+        self.matrix.piece.coord = self.FALLING_PIECE_COORD
         self.matrix.ghost = self.matrix.piece.ghost()
         self.refresh_ghost()
 

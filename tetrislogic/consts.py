@@ -14,7 +14,7 @@ AUTOREPEAT_DELAY = 0.300  # Official : 0.300 s
 AUTOREPEAT_PERIOD = 0.010  # Official : 0.010 s
 
 # Piece init coord
-MATRIX_PIECE_COORD = Coord(4, LINES)
+FALLING_PIECE_COORD = Coord(4, LINES)
 
 # Scores
 LINES_CLEAR_NAME = "LINES_CLEAR_NAME"
