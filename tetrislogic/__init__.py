@@ -12,4 +12,4 @@ from .tetromino import (
     T_Tetrimino,
     Z_Tetrimino,
 )
-from .tetrislogic import TetrisLogic, Matrix, AbstractTimer
+from .tetrislogic import TetrisLogic, Matrix, AbstractScheduler

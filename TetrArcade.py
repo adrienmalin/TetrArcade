@@ -20,7 +20,7 @@ import os
 import itertools
 import configparser
 
-from tetrislogic import TetrisLogic, Color, Coord, I_Tetrimino, Movement, AbstractTimer
+from tetrislogic import TetrisLogic, Color, Coord, I_Tetrimino, Movement, AbstractScheduler
 
 
 # Constants
@@ -134,7 +134,7 @@ class State:
     OVER = 3
 
 
-class Timer(AbstractTimer):
+class Scheduler(AbstractScheduler):
     def __init__(self):
         self.tasks = {}
 
@@ -226,7 +226,7 @@ class MatrixSprites(MinoesSprites):
 
 class TetrArcade(TetrisLogic, arcade.Window):
 
-    timer = Timer()
+    timer = Scheduler()
 
     def __init__(self):
         locale.setlocale(locale.LC_ALL, "")

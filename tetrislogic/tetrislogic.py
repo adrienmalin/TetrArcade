@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""Tetris game logic meant to be implemented with GUI
+Follows Tetris Guidelines 2009 (see https://tetris.fandom.com/wiki/Tetris_Guideline)
+"""
+
+
 import pickle
 
 from .utils import Coord, Movement, Spin, T_Spin, T_Slot
@@ -20,31 +25,34 @@ from .consts import (
 CRYPT_KEY = 987943759387540938469837689379857347598347598379584857934579343
 
 
-class AbstractTimer:
+class AbstractScheduler:
     def postpone(task, delay):
+        """schedule callable task once after delay in second"""
         raise Warning("AbstractTimer.postpone is not implemented.")
 
     def cancel(self, task):
+        """cancel task if schedule of pass"""
         raise Warning("AbstractTimer.stop is not implemented.")
 
     def reset(self, task, period):
+        """cancel and reschedule task"""
         self.timer.cancel(task)
         self.timer.postpone(task, period)
 
 
-class PieceContainer:
+class AbstractPieceContainer:
     def __init__(self):
         self.piece = None
 
 
-class HoldQueue(PieceContainer):
+class HoldQueue(AbstractPieceContainer):
     pass
 
 
-class Matrix(list, PieceContainer):
+class Matrix(list, AbstractPieceContainer):
     def __init__(self, lines, collumns):
         list.__init__(self)
-        PieceContainer.__init__(self)
+        AbstractPieceContainer.__init__(self)
         self.lines = lines
         self.collumns = collumns
         self.ghost = None
@@ -74,7 +82,7 @@ class Matrix(list, PieceContainer):
         )
 
 
-class NextQueue(PieceContainer):
+class NextQueue(AbstractPieceContainer):
     def __init__(self, nb_pieces):
         super().__init__()
         self.nb_pieces = nb_pieces
@@ -147,24 +155,28 @@ class Stats:
 
 
 class TetrisLogic:
+    """Tetris game logic"""
 
     # These class attributes can be redefined on inheritance
     AUTOREPEAT_DELAY = AUTOREPEAT_DELAY
     AUTOREPEAT_PERIOD = AUTOREPEAT_PERIOD
     MATRIX_PIECE_COORD = MATRIX_PIECE_COORD
 
-    timer = AbstractTimer()
+    timer = AbstractScheduler()
 
-    def __init__(self, lines=LINES, collumns=COLLUMNS, next_pieces=NEXT_PIECES):
+    def __init__(self, lines=LINES, collumns=COLLUMNS, nb_next_pieces=NEXT_PIECES):
+        """init game with a `lines`x`collumns` size matrix
+        and `nb_next_pieces`"""
         self.stats = Stats()
         self.load_high_score()
         self.held = HoldQueue()
         self.matrix = Matrix(lines, collumns)
-        self.next = NextQueue(next_pieces)
+        self.next = NextQueue(nb_next_pieces)
         self.autorepeatable_actions = (self.move_left, self.move_right, self.soft_drop)
         self.pressed_actions = []
 
     def new_game(self, level=1):
+        """start a new game at `level`"""
         self.stats.new_game(level)
 
         self.pressed_actions = []
