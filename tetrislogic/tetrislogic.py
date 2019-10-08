@@ -186,10 +186,10 @@ class TetrisLogic:
         self.held.piece = None
         self.timer.postpone(self.stats.update_time, 1)
 
-        self.on_new_game(self.next.pieces)
+        self.on_new_game(self.matrix, self.next.pieces)
         self.new_level()
 
-    def on_new_game(self, next_pieces):
+    def on_new_game(self, matrix, next_pieces):
         pass
 
     def new_level(self):

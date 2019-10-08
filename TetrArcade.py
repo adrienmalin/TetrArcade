@@ -385,10 +385,10 @@ AGAIN""".format(
 
         self.play_music = self.conf["MUSIC"].getboolean("play")
 
-    def on_new_game(self, next_pieces):
+    def on_new_game(self, matrix, next_pieces):
         self.highlight_texts = []
 
-        self.matrix.sprites = MatrixSprites(self.matrix)
+        matrix.sprites = MatrixSprites(self.matrix)
         for piece in next_pieces:
             piece.sprites = TetrominoSprites(piece, self)
 
