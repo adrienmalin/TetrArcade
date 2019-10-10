@@ -6,7 +6,8 @@ Tetris clone made with Python and Arcade graphic library
 
 ## Requirements
 
-* [Python](https://www.python.org/) 3.6 or later
+* [Python 3.6 or later](https://www.python.org/)
+* [FFmpeg 4](http://ubuntuhandbook.org/index.php/2019/08/install-ffmpeg-4-2-ubuntu-18-04/)
 
 ## Install
 
